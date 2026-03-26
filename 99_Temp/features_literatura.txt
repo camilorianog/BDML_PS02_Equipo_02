@@ -1,0 +1,230 @@
+FEATURES DE INGENIERÍA — INTERACCIONES Y POLINOMIOS CON RESPALDO LITERARIO
+===========================================================================
+Proyecto: Kaggle Pobreza Colombia (GEIH 2018)
+
+
+1. RATIO DE DEPENDENCIA
+------------------------
+Definición: (n_menores_18 + n_mayores_65) / max(n_personas - n_menores_18 - n_mayores_65, 1)
+Justificación: Variable canónica en predicción de pobreza en América Latina. La competencia
+  de Kaggle de Costa Rica (IDB, 2018) la incluye explícitamente como feature construida
+  llamada "dependency", definida como el cociente entre miembros menores de 19 o mayores
+  de 64 y los miembros entre 19 y 64 años.
+Referencia:
+  Inter-American Development Bank. (2018). Costa Rican Household Poverty Level Prediction.
+  Kaggle Competition. https://www.kaggle.com/c/costa-rican-household-poverty-prediction
+  Banerjee, S. (2018). Costa Rican Household Poverty Level Prediction.
+  https://souvikb07.github.io/_posts/2018-09-26-Costa-Rican/
+
+
+2. HACINAMIENTO (personas por cuarto)
+---------------------------------------
+Definición: n_personas / max(p5000, 1)   [p5000 = número de cuartos del hogar]
+Justificación: La literatura latinoamericana de pobreza y la competencia de Costa Rica
+  identifican el hacinamiento (personas por cuarto, "overcrowding") como uno de los
+  predictores más correlacionados con pobreza extrema, especialmente en el rango de
+  2-4 personas por cuarto.
+Referencia:
+  Banerjee, S. (2018). Op. cit. ("tamviv" y hacinamiento como features clave)
+  Mentalbreaks. (2019). Predicting household poverty in Latin America, Part II.
+  https://mentalbreaks.rbind.io/posts/predicting-household-poverty-in-latin-america-part-ii
+
+
+3. CUARTOS POR PERSONA (inverso del hacinamiento)
+---------------------------------------------------
+Definición: p5000 / max(n_personas, 1)
+Justificación: Complemento directo del hacinamiento. Captura disponibilidad de espacio
+  como proxy de bienestar del hogar. Documentado en la literatura PMT estándar del
+  Banco Mundial como indicador de condiciones de vivienda.
+Referencia:
+  Browne, J., Moll, P., & Ravallion, M. (2018). A poor means test? Econometric targeting
+  in Africa. Journal of Development Economics, 134, 109-124.
+  https://doi.org/10.1016/j.jdeveco.2018.05.004
+
+
+4. INTERACCIÓN: EDUCACIÓN × OCUPACIÓN
+---------------------------------------
+Definición: as.integer(nivel_educ_max) * tasa_ocupacion
+Justificación: La interacción entre nivel educativo y situación laboral captura el
+  retorno efectivo de la educación en el mercado laboral. Un hogar con alta educación
+  pero baja ocupación (desempleo estructural) tiene un perfil de pobreza distinto a
+  uno con alta educación y alta ocupación.
+Referencia:
+  Nkurunziza, E., Niyibizi, A., & Ingabire, M. (2024). Enhancing poverty classification
+  in developing countries through machine learning. Cogent Economics & Finance, 12(1).
+  https://doi.org/10.1080/23322039.2024.2444374
+  ("employment and education are closely related to poverty reduction")
+  Marrugo-Arnedo et al. (2015). Determinants of poverty in the Colombian Caribbean region.
+  Economía, 15, 47-69. ("educación y ocupación son las variables con mayor incidencia")
+
+
+5. INTERACCIÓN: ZONA GEOGRÁFICA × TASA DE OCUPACIÓN
+-----------------------------------------------------
+Definición: clase (cabecera/resto) interactuando con tasa_ocupacion
+Justificación: El retorno laboral y el efecto de la ocupación sobre la pobreza difiere
+  sistemáticamente entre zonas urbanas y rurales en Colombia. En áreas rurales, la
+  ocupación informal agrícola no reduce la pobreza en la misma magnitud que la ocupación
+  formal urbana.
+Referencia:
+  Obando Rozo, N., & Andrián, L. G. (2015). Measuring changes in poverty in Colombia:
+  The 2000s. Inter-American Development Bank.
+  https://publications.iadb.org/publications/english/document/Measuring-Changes-in-Poverty-in-Colombia-The-2000s.pdf
+  World Bank. (2019). Poverty and shared prosperity in Colombia. World Bank Group.
+  https://documents1.worldbank.org/curated/en/657941560749443721/pdf/
+
+
+6. INTERACCIÓN: FORMALIDAD × SEGURIDAD SOCIAL
+-----------------------------------------------
+Definición: prop_cotiza_pension * prop_afiliado_salud
+Justificación: La co-ocurrencia de cotización a pensión y afiliación contributiva a salud
+  es un indicador compuesto de formalidad laboral plena. Un hogar donde ambas son altas
+  tiene un perfil de ingreso formal muy distinto a uno donde solo una se cumple.
+Referencia:
+  World Bank. (2019). Op. cit. (define trabajadores informales como quienes no cotizan
+  pensión, y documenta la interacción entre informalidad y pobreza en GEIH 2008-2017)
+  UNDP & ECLAC. (2024). Job Quality, Social Protection, and Connectivity: Key Dimensions
+  for Measuring Multidimensional Poverty in Latin America.
+  https://www.undp.org/latin-america/press-releases/job-quality-social-protection-and-connectivity
+
+
+7. POLINOMIO DE SEGUNDO ORDEN: TAMAÑO DEL HOGAR
+-------------------------------------------------
+Definición: n_personas^2
+Justificación: La relación entre tamaño del hogar y pobreza no es lineal — economías de
+  escala en el consumo hacen que el efecto marginal de agregar una persona disminuya
+  conforme el hogar crece. La literatura documenta que polinomios de segundo orden en
+  variables de tamaño del hogar mejoran el ajuste del modelo.
+Referencia:
+  UN Statistics Division. (2005). Handbook on Poverty Statistics. United Nations.
+  https://unstats.un.org/unsd/methods/poverty/pdf/un_book%20final%2030%20dec%2005.pdf
+  ("adding a fourth person to the household often exceeds the cost of adding a fifth" —
+  economías de escala justifican relación no lineal)
+  Soas University. (2005). Measurement and Nature of Absolute Poverty in LDCs.
+  https://www.soas.ac.uk/sites/default/files/2022-10/economics-wp129.pdf
+  ("polynomial of power two turned out to be most appropriate")
+
+
+8. POLINOMIO DE SEGUNDO ORDEN: EDAD PROMEDIO
+---------------------------------------------
+Definición: edad_promedio^2
+Justificación: La relación entre edad y pobreza tiene forma de U invertida — hogares
+  con jefes muy jóvenes (baja experiencia, menores salarios) y muy mayores (salida del
+  mercado laboral, pensiones insuficientes) tienden a ser más pobres que hogares de
+  mediana edad. Un polinomio de segundo orden captura esta no linealidad.
+Referencia:
+  Obando Rozo & Andrián (2015). Op. cit. (documentan mayor probabilidad de pobreza
+  en personas cercanas a 65 años al salir del mercado laboral)
+  Banerjee, S. (2018). Op. cit. ("those in extreme poverty are likely to be much younger")
+
+
+9. INTERACCIÓN: PROPORCIÓN DE MUJERES × JEFATURA
+--------------------------------------------------
+Definición: prop_mujeres * (1 - tasa_ocupacion)
+Justificación: Hogares con alta proporción de mujeres y baja tasa de ocupación capturan
+  la carga de trabajo doméstico no remunerado como barrera a la generación de ingresos,
+  documentada extensamente en la literatura latinoamericana.
+Referencia:
+  UNDP & ECLAC. (2024). Op. cit. ("25% of multidimensional poverty stems from poor job
+  quality and barriers to labor participation — particularly for women")
+  Corral, P., Molina, I., & Nguyen, M. (2024). Poverty mapping in the age of machine
+  learning. Journal of Development Economics, 171, 103383.
+  https://doi.org/10.1016/j.jdeveco.2024.103383
+  ("importance of addressing gender inequalities in education")
+
+
+10. JEFATURA FEMENINA × INACTIVIDAD LABORAL
+--------------------------------------------
+Variables base: jefe_mujer (construida en agregar_personas: p6050 == 1 & p6020 == 2)
+Definición interacción: jefe_mujer * (1 - tasa_ocupacion)
+Justificación: En Colombia, el 42.7% de la población en hogares con jefatura femenina
+  vivía en pobreza en 2022 (Statista, 2022). Usando exactamente los datos GEIH 2018,
+  la tasa de desempleo femenina era 12.7% vs. 7.4% para hombres, y el 46.2% de mujeres
+  en edad de trabajar eran inactivas vs. 25.4% de hombres (Bleynat et al., 2020).
+  La interacción captura el efecto conjunto de jefatura femenina con baja participación
+  laboral del hogar, que representa una de las configuraciones de mayor riesgo de pobreza
+  en América Latina según la literatura de género y pobreza.
+  Nota: El signo del efecto es debatido en la literatura — algunos estudios encuentran
+  mayor pobreza en hogares con jefatura femenina (Chant, 2003), mientras que otros
+  documentan que la composición del hogar (presencia de adultos adicionales) puede
+  revertir este efecto (Munoz Boudet et al., 2018). La interacción con inactividad
+  laboral busca capturar el escenario de mayor vulnerabilidad.
+Referencias:
+  Statista. (2022). Poverty among families in Colombia by gender.
+  https://www.statista.com/statistics/812873/incidence-rate-poverty-families-household-gender-colombia/
+
+  Bleynat, I., Gasparini, L., & Marchionni, M. (2020). The gendered poverty effects of
+  the COVID-19 pandemic in Colombia. European Journal of Development Research, 33,
+  875-903. https://doi.org/10.1057/s41287-020-00328-2
+  (usa GEIH 2018 — mismo dataset de esta competencia)
+
+  Chant, S. (2003). Female household headship and the feminisation of poverty.
+  London School of Economics Gender Institute.
+  https://eprints.lse.ac.uk/574/1/femaleHouseholdHeadship.pdf
+
+  Munoz Boudet, A. M., et al. (2018). Gender differences in poverty and household
+  composition through the life cycle. World Bank Policy Research Working Paper 8360.
+  https://documents1.worldbank.org/curated/en/135731520343670750/pdf/WPS8360.pdf
+
+
+REFERENCIAS COMPLETAS
+----------------------
+Banerjee, S. (2018). Costa Rican Household Poverty Level Prediction.
+  https://souvikb07.github.io/_posts/2018-09-26-Costa-Rican/
+
+Browne, J., Moll, P., & Ravallion, M. (2018). A poor means test? Econometric targeting
+  in Africa. Journal of Development Economics, 134, 109-124.
+  https://doi.org/10.1016/j.jdeveco.2018.05.004
+
+Corral, P., Molina, I., & Nguyen, M. (2024). Poverty mapping in the age of machine
+  learning. Journal of Development Economics, 171, 103383.
+  https://doi.org/10.1016/j.jdeveco.2024.103383
+
+Inter-American Development Bank. (2018). Costa Rican Household Poverty Level Prediction.
+  Kaggle. https://www.kaggle.com/c/costa-rican-household-poverty-prediction
+
+Marrugo-Arnedo, C. A., et al. (2015). Determinants of poverty in the Colombian Caribbean
+  region. Economía, 15, 47-69.
+  https://www.researchgate.net/publication/282897486
+
+Mentalbreaks. (2019). Predicting household poverty in Latin America, Part II.
+  https://mentalbreaks.rbind.io/posts/predicting-household-poverty-in-latin-america-part-ii
+
+Nkurunziza, E., Niyibizi, A., & Ingabire, M. (2024). Enhancing poverty classification
+  in developing countries through machine learning. Cogent Economics & Finance, 12(1).
+  https://doi.org/10.1080/23322039.2024.2444374
+
+Obando Rozo, N., & Andrián, L. G. (2015). Measuring changes in poverty in Colombia:
+  The 2000s. Inter-American Development Bank.
+  https://publications.iadb.org/publications/english/document/Measuring-Changes-in-Poverty-in-Colombia-The-2000s.pdf
+
+SOAS University. (2005). Measurement and nature of absolute poverty in least developed
+  countries. SOAS Economics Working Paper 129.
+  https://www.soas.ac.uk/sites/default/files/2022-10/economics-wp129.pdf
+
+UN Statistics Division. (2005). Handbook on poverty statistics: Concepts, methods and
+  policy use. United Nations.
+  https://unstats.un.org/unsd/methods/poverty/pdf/un_book%20final%2030%20dec%2005.pdf
+
+UNDP & ECLAC. (2024). Job quality, social protection, and connectivity: Key dimensions
+  for measuring multidimensional poverty in Latin America.
+  https://www.undp.org/latin-america/press-releases/job-quality-social-protection-and-connectivity
+
+World Bank. (2019). Poverty and shared prosperity in Colombia: Background paper for
+  policy notes. World Bank Group.
+  https://documents1.worldbank.org/curated/en/657941560749443721/pdf/Poverty-and-Shared-Prosperity-in-Colombia-Background-Paper-for-Policy-Notes.pdf
+
+Bleynat, I., Gasparini, L., & Marchionni, M. (2020). The gendered poverty effects of
+  the COVID-19 pandemic in Colombia. European Journal of Development Research, 33,
+  875-903. https://doi.org/10.1057/s41287-020-00328-2
+
+Chant, S. (2003). Female household headship and the feminisation of poverty: Facts,
+  fictions and forward strategies. London School of Economics Gender Institute.
+  https://eprints.lse.ac.uk/574/1/femaleHouseholdHeadship.pdf
+
+Munoz Boudet, A. M., Buitrago, P., Leroy De La Briere, B., Newhouse, D., Rubiano
+  Matulevich, E., Scott, K., & Suarez Becerra, P. (2018). Gender differences in poverty
+  and household composition through the life cycle. World Bank Policy Research Working
+  Paper 8360. https://documents1.worldbank.org/curated/en/135731520343670750/pdf/WPS8360.pdf
+
+Statista. (2022). Poverty among families in Colombia by gender.
+  https://www.statista.com/statistics/812873/incidence-rate-poverty-families-household-gender-colombia/

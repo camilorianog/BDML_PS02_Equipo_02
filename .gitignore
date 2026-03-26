@@ -1,0 +1,21 @@
+# Datos crudos — descargar con kaggle CLI
+00_data/00_raw/
+
+# Datos procesados pesados — se regeneran corriendo 00_run.R
+00_data/01_processed/
+
+# Modelos .rds — se regeneran corriendo 00_run.R
+02_models/**/*.rds
+
+# Submissions — se regeneran corriendo 00_run.R
+03_submissions/
+
+# R
+.Rhistory
+.RData
+.Rproj.user
+*.Rproj
+.RDataTmp
+
+# Mac
+.DS_Store
