@@ -5,17 +5,16 @@
 
 generar_submission <- function(modelo, test, threshold, dia) {
   
-  # Extraer nombre desde el modelo
   metodo <- modelo$method
   
   if (metodo == "glm") {
     nombre_archivo <- "logit_baseline"
   } else if (metodo == "glmnet") {
-    best <- modelo$bestTune
-    alpha_str  <- gsub("\\.", "", sprintf("%.2f", best$alpha))
-    lambda_str <- round(best$lambda, 4)
+    best       <- modelo$bestTune
+    alpha_str  <- format(best$alpha,  scientific = FALSE)
+    lambda_str <- format(best$lambda, scientific = FALSE, digits = 6)
     nombre_archivo <- paste0("EN_lambda_", lambda_str,
-                             "_alpha_", alpha_str)
+                             "_alpha_",    alpha_str)
   } else {
     nombre_archivo <- metodo
   }
@@ -28,7 +27,7 @@ generar_submission <- function(modelo, test, threshold, dia) {
     pobre = preds
   )
   
-  dir_sub <- here(paths$submissions, paste0( dia, "_day"))
+  dir_sub <- here(paths$submissions, paste0(dia, "_day"))
   dir.create(dir_sub, recursive = TRUE, showWarnings = FALSE)
   
   ruta <- file.path(dir_sub, paste0(nombre_archivo, ".csv"))
