@@ -96,7 +96,7 @@ toc()
 
 cat("\n>>> [3/4] Entrenamiento de modelos...\n")
 tic("Modelos")
-source(here("02_models", "01_day", "01_day_models.R"))
+source(here("02_models", "01_day_models.R"))
 toc()
 
 # --- 4. Submissions -----------------------------------------
