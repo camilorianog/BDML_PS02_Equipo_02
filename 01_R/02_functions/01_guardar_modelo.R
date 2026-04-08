@@ -3,10 +3,10 @@
 # Guarda el modelo .rds y registra resultados en log.csv
 # ============================================================
 
-guardar_modelo <- function(modelo, nombre, dia, dir_dia, threshold, f1_cv) {
+guardar_modelo <- function(modelo, nombre, tipo, dir_modelo, threshold, f1_cv) {
   
   # Guardar .rds
-  ruta_rds <- file.path(dir_dia, paste0(nombre, ".rds"))
+  ruta_rds <- file.path(dir_modelo, paste0(nombre, ".rds"))
   saveRDS(modelo, ruta_rds)
   
   # Actualizar log

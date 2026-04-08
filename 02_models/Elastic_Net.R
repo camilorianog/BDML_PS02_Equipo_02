@@ -30,6 +30,7 @@ ctrl <- trainControl(
 cat("\n>>> [elastic_net - 1/4] Ridge...\n")
 set.seed(SEED)
 
+tic()
 m1 <- train(
   pobre ~ .,
   data      = train |> select(-id),
@@ -47,6 +48,7 @@ opt1   <- optimizar_threshold(m1, train, train$pobre)
 nombre_m1 <- paste0("EN_ridge_lambda_", round(m1$bestTune$lambda, 6))
 guardar_modelo(m1, nombre_m1, TIPO, dir_modelo, opt1$threshold, opt1$f1)
 generar_submission(m1, test, opt1$threshold, TIPO)
+toc()
 
 # ============================================================
 # MODELO 2 — Lasso (alpha = 1)
@@ -54,6 +56,7 @@ generar_submission(m1, test, opt1$threshold, TIPO)
 cat("\n>>> [elastic_net - 2/4] Lasso...\n")
 set.seed(SEED)
 
+tic()
 m2 <- train(
   pobre ~ .,
   data      = train |> select(-id),
@@ -71,6 +74,7 @@ opt2      <- optimizar_threshold(m2, train, train$pobre)
 nombre_m2 <- paste0("EN_lasso_lambda_", round(m2$bestTune$lambda, 6))
 guardar_modelo(m2, nombre_m2, TIPO, dir_modelo, opt2$threshold, opt2$f1)
 generar_submission(m2, test, opt2$threshold, TIPO)
+toc()
 
 # ============================================================
 # MODELO 3 — Mix (alpha = 0.5)
@@ -78,6 +82,7 @@ generar_submission(m2, test, opt2$threshold, TIPO)
 cat("\n>>> [elastic_net - 3/4] Mix...\n")
 set.seed(SEED)
 
+tic()
 m3 <- train(
   pobre ~ .,
   data      = train |> select(-id),
@@ -95,13 +100,15 @@ opt3      <- optimizar_threshold(m3, train, train$pobre)
 nombre_m3 <- paste0("EN_mix_lambda_", round(m3$bestTune$lambda, 6))
 guardar_modelo(m3, nombre_m3, TIPO, dir_modelo, opt3$threshold, opt3$f1)
 generar_submission(m3, test, opt3$threshold, TIPO)
+toc()
 
 # ============================================================
-# MODELO 4 — Full grid
+# MODELO 4 — Full grid AUC
 # ============================================================
 cat("\n>>> [elastic_net - 4/4] Full grid...\n")
 set.seed(SEED)
 
+tic()
 m4 <- train(
   pobre ~ .,
   data      = train |> select(-id),
@@ -113,33 +120,36 @@ m4 <- train(
 )
 
 opt4      <- optimizar_threshold(m4, train, train$pobre)
-nombre_m4 <- paste0("EN_full_lambda_", round(m4$bestTune$lambda, 6),
+nombre_m4 <- paste0("EN_full_AUC_lambda_", round(m4$bestTune$lambda, 6),
                     "_alpha_",         m4$bestTune$alpha)
 guardar_modelo(m4, nombre_m4, TIPO, dir_modelo, opt4$threshold, opt4$f1)
 generar_submission(m4, test, opt4$threshold, TIPO)
+toc()
 
 # ============================================================
-# MODELO 5 — Full grid (Pre-processed)
+# MODELO 5 — Full grid F
 # ============================================================
 cat("\n>>> [elastic_net - 5/5] Full grid Pre-Process...\n")
 set.seed(SEED)
 
+tic()
 m5 <- train(
   pobre ~ .,
   data      = train |> select(-id),
   method    = "glmnet",
   family    = "binomial",
   trControl = ctrl,
-  metric    = "AUC",
+  metric    = "F",
   preProcess = c("center", "scale"),
   tuneGrid  = EN_GRID
 )
 
 opt5      <- optimizar_threshold(m5, train, train$pobre)
-nombre_m5 <- paste0("EN_full_lambda_", round(m5$bestTune$lambda, 6),
+nombre_m5 <- paste0("EN_full_F_lambda_", round(m5$bestTune$lambda, 6),
                     "_alpha_",         m5$bestTune$alpha)
 guardar_modelo(m5, nombre_m5, TIPO, dir_modelo, opt5$threshold, opt5$f1)
 generar_submission(m5, test, opt5$threshold, TIPO)
+toc()
 
 # ============================================================
 # RESUMEN
@@ -153,6 +163,6 @@ read.csv(here(paths$models, "log.csv")) |>
   print()
 
 # --- Limpiar entorno ----------------------------------------
-rm(list = ls(pattern = "^(m|opt|nombre)"))
+rm(list = ls(pattern = "^(m[0-9]+|opt[0-9]+|nombre)"))
 rm(ctrl, dir_modelo, TIPO)
 gc()

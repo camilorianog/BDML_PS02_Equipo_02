@@ -3,14 +3,14 @@
 # Optimiza el threshold de clasificación para maximizar F1
 # ============================================================
 
-optimizar_threshold <- function(modelo, dados, target) {
+optimizar_threshold <- function(modelo, datos, target) {
   
   if (modelo$method == "lm") {
-    probs  <- pmin(pmax(predict(modelo, dados), 0), 1)
+    probs  <- pmin(pmax(predict(modelo, datos), 0), 1)
     target <- factor(ifelse(target == 1, "pobre", "no_pobre"),
                      levels = c("no_pobre", "pobre"))
   } else {
-    probs  <- predict(modelo, dados, type = "prob")[, "pobre"]
+    probs  <- predict(modelo, datos, type = "prob")[, "pobre"]
   }
   
   thresholds <- seq(0.1, 0.9, by = 0.01)

@@ -2,7 +2,7 @@
 # Modelos de Probabilidad Lineal (LPM)
 # ============================================================
 
-TIPO       <- "lpm"
+TIPO       <- "LPM"
 dir_modelo <- here(paths$models, TIPO)
 dir.create(dir_modelo, recursive = TRUE, showWarnings = FALSE)
 
@@ -28,6 +28,7 @@ ctrl <- trainControl(
 cat("\n>>> [lpm - 1/1] Linear Probability Model...\n")
 set.seed(SEED)
 
+tic()
 m1 <- train(
   pobre_num ~ .,
   data      = train |> select(-id, -pobre),
@@ -35,18 +36,19 @@ m1 <- train(
   trControl = ctrl
 )
 
-opt1 <- optimizar_threshold(m1, train, train$pobre_num)
+opt1 <- optimizar_threshold(m1, train_lpm, train$pobre_num)
 cat("    Threshold óptimo:     ", round(opt1$threshold, 4), "\n")
 cat("    F1 (threshold óptimo):", round(opt1$f1, 4), "\n")
 
 guardar_modelo(m1, "lpm_baseline", TIPO, dir_modelo, opt1$threshold, opt1$f1)
 generar_submission(m1, test, opt1$threshold, TIPO)
+toc()
 
 # ============================================================
 # RESUMEN
 # ============================================================
 cat("\n======================================================\n")
-cat("  Resumen lpm\n")
+cat("  Resumen LPM\n")
 cat("======================================================\n")
 read.csv(here(paths$models, "log.csv")) |>
   filter(tipo == TIPO) |>
@@ -54,6 +56,6 @@ read.csv(here(paths$models, "log.csv")) |>
   print()
 
 # --- Limpiar entorno ----------------------------------------
-rm(list = ls(pattern = "^(m|opt|nombre)"))
+rm(list = ls(pattern = "^(m[0-9]+|opt[0-9]+|nombre)"))
 rm(ctrl, dir_modelo, TIPO)
 gc()

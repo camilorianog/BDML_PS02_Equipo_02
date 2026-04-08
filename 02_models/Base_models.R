@@ -30,6 +30,7 @@ ctrl <- trainControl(
 cat("\n>>> [base - 1/1] Logística baseline...\n")
 set.seed(SEED)
 
+tic()
 m1 <- train(
   pobre ~ .,
   data      = train |> select(-id),
@@ -42,7 +43,9 @@ m1 <- train(
 opt1 <- optimizar_threshold(m1, train, train$pobre)
 guardar_modelo(m1, "logit_baseline", TIPO, dir_modelo, opt1$threshold, opt1$f1)
 generar_submission(m1, test, opt1$threshold, TIPO)
+toc()
 
 # --- Limpiar entorno ----------------------------------------
-rm(m1, ctrl, opt1, dir_modelo, TIPO)
+rm(list = ls(pattern = "^(m[0-9]+|opt[0-9]+|nombre)"))
+rm(ctrl, dir_modelo, TIPO)
 gc()
