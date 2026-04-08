@@ -99,7 +99,18 @@ toc()
 
 # --- 3. Modelado --------------------------------------------
 
-# WIP
+cat("\n>>> [3/4] Entrenamiento de modelos...\n")
+tic("Modelos")
+source(here("02_models", "01_day_models.R"))
+toc()
+
+# --- 4. Submissions -----------------------------------------
+
+cat("\n>>> [4/4] Generando submissions...\n")
+tic("Submissions")
+
+# source(here("04_submissions", "01_day_01", "00_generar_submission.R"))
+
 
 toc()
 
