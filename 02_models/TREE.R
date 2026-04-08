@@ -20,7 +20,7 @@ ctrl <- trainControl(
 )
 
 # ============================================================
-# DÍA 04 — CART
+# DÍA 04 — CART y RF
 # ============================================================
 
 DIA     <- "04"
@@ -106,10 +106,17 @@ m10 <- train(
   method    = "rf",
   trControl = ctrl,
   metric    = "AUC",
-  tuneGrid  = expand.grid(mtry = mtry_default)
+  tuneGrid  = expand.grid(mtry = mtry_default),
+  ntree     = 100
 )
 
-opt10      <- optimizar_threshold(m10, train, train$pobre)
+preds_m10  <- factor(
+  ifelse(predict(m10, train, type = "prob")[, "pobre"] >= 0.5, "pobre", "no_pobre"),
+  levels = c("no_pobre", "pobre")
+)
+
+f1_m10     <- confusionMatrix(preds_m10, train$pobre, positive = "pobre")$byClass["F1"]
+opt10      <- list(threshold = 0.5, f1 = f1_m10)
 nombre_m10 <- paste0("RF_mtry_", m10$bestTune$mtry)
 
 guardar_modelo(m10, nombre_m10, DIA, dir_dia, opt10$threshold, opt10$f1)
@@ -130,10 +137,17 @@ m11 <- train(
   metric    = "AUC",
   tuneGrid  = expand.grid(
     mtry = c(floor(mtry_default / 2), mtry_default, floor(mtry_default * 2))
-  )
+  ),
+  ntree     = 100
 )
 
-opt11      <- optimizar_threshold(m11, train, train$pobre)
+preds_m11  <- factor(
+  ifelse(predict(m11, train, type = "prob")[, "pobre"] >= 0.5, "pobre", "no_pobre"),
+  levels = c("no_pobre", "pobre")
+)
+
+f1_m11     <- confusionMatrix(preds_m11, train$pobre, positive = "pobre")$byClass["F1"]
+opt11      <- list(threshold = 0.5, f1 = f1_m11)
 nombre_m11 <- paste0("RF_mtry_", m11$bestTune$mtry)
 
 guardar_modelo(m11, nombre_m11, DIA, dir_dia, opt11$threshold, opt11$f1)
