@@ -10,4 +10,13 @@
 "20550","2","logit_baseline_v2",0.31,0.6695,NA
 "20550","2","logit_baseline_v2",0.31,0.6695,NA
 "20550","2","logit_baseline_v2",0.32,0.6701,NA
-"20550","00","01_logit_baseline",0.32,0.6701,NA
+"20550","0","01_logit_baseline",0.32,0.6701,NA
+"20550","Elastic_Net","EN_ridge_lambda_0.011721",0.32,0.663,NA
+"20550","Elastic_Net","EN_lasso_lambda_1e-04",0.32,0.6697,NA
+"20550","Elastic_Net","EN_mix_lambda_1e-04",0.32,0.67,NA
+"20550","Elastic_Net","EN_full_lambda_1e-04_alpha_0.25",0.32,0.6699,NA
+"20550","Elastic_Net","EN_ridge_gaussian_lambda_0.011721",0.32,0.663,NA
+"20550","Elastic_Net","EN_mix_lambda_1e-04",0.32,0.6699,NA
+"20550","lpm","lpm_baseline",0.5,0.5716,NA
+"20550","lpm","lpm_baseline",0.5,0.5716,NA
+"20551","lpm","lpm_baseline",0.37,0.6604,NA

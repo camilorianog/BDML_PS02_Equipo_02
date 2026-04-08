@@ -138,8 +138,8 @@ m5 <- train(
 opt5      <- optimizar_threshold(m5, train, train$pobre)
 nombre_m5 <- paste0("EN_full_lambda_", round(m5$bestTune$lambda, 6),
                     "_alpha_",         m5$bestTune$alpha)
-guardar_modelo(m5, nombre_m4, TIPO, dir_modelo, opt5$threshold, opt5$f1)
-generar_submission(m5, test, opt4$threshold, TIPO)
+guardar_modelo(m5, nombre_m5, TIPO, dir_modelo, opt5$threshold, opt5$f1)
+generar_submission(m5, test, opt5$threshold, TIPO)
 
 # ============================================================
 # RESUMEN
@@ -153,8 +153,6 @@ read.csv(here(paths$models, "log.csv")) |>
   print()
 
 # --- Limpiar entorno ----------------------------------------
-rm(m1, m2, m3, m4,m5, ctrl,
-   opt1, opt2, opt3, opt4,
-   nombre_m1, nombre_m2, nombre_m3, nombre_m4,
-   dir_modelo, TIPO)
+rm(list = ls(pattern = "^(m|opt|nombre)"))
+rm(ctrl, dir_modelo, TIPO)
 gc()

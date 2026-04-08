@@ -11,8 +11,7 @@ guardar_modelo <- function(modelo, nombre, dia, dir_dia, threshold, f1_cv) {
   
   # Actualizar log
   log_entry <- data.frame(
-    fecha     = Sys.Date(),
-    dia       = dia,
+    tipo      = tipo,
     nombre    = nombre,
     threshold = round(threshold, 3),
     cv_f1     = round(f1_cv, 4),
@@ -23,6 +22,8 @@ guardar_modelo <- function(modelo, nombre, dia, dir_dia, threshold, f1_cv) {
   ruta_log <- here(paths$models, "log.csv")
   if (file.exists(ruta_log)) {
     log_actual <- read.csv(ruta_log)
+    log_actual <- log_actual |>
+      filter(!(tipo == log_entry$tipo & nombre == log_entry$nombre))
     write.csv(rbind(log_actual, log_entry), ruta_log, row.names = FALSE)
   } else {
     write.csv(log_entry, ruta_log, row.names = FALSE)

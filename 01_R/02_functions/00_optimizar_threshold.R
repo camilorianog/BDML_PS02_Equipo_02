@@ -3,8 +3,16 @@
 # Optimiza el threshold de clasificación para maximizar F1
 # ============================================================
 
-optimizar_threshold <- function(modelo, datos, target) {
-  probs      <- predict(modelo, datos, type = "prob")[, "pobre"]
+optimizar_threshold <- function(modelo, dados, target) {
+  
+  if (modelo$method == "lm") {
+    probs  <- pmin(pmax(predict(modelo, dados), 0), 1)
+    target <- factor(ifelse(target == 1, "pobre", "no_pobre"),
+                     levels = c("no_pobre", "pobre"))
+  } else {
+    probs  <- predict(modelo, dados, type = "prob")[, "pobre"]
+  }
+  
   thresholds <- seq(0.1, 0.9, by = 0.01)
   
   f1_scores <- map_dbl(thresholds, function(t) {
