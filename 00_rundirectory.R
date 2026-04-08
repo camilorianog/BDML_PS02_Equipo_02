@@ -17,6 +17,7 @@ pacman::p_load(
   # Manipulación de datos
   tidyverse,
   janitor,
+  skimr,
   
   # Modelado
   caret,
@@ -29,6 +30,10 @@ pacman::p_load(
   #Gráficos
   ggplot2
 )
+
+# --- wd -----------------------------------
+
+setwd(here())
 
 # --- Gestión de funciones -----------------------------------
 
@@ -94,17 +99,7 @@ toc()
 
 # --- 3. Modelado --------------------------------------------
 
-cat("\n>>> [3/4] Entrenamiento de modelos...\n")
-tic("Modelos")
-source(here("02_models", "01_day", "01_day_models.R"))
-toc()
-
-# --- 4. Submissions -----------------------------------------
-
-cat("\n>>> [4/4] Generando submissions...\n")
-tic("Submissions")
-
-# source(here("04_submissions", "01_day_01", "00_generar_submission.R"))
+# WIP
 
 toc()
 

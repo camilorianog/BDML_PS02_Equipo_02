@@ -27,7 +27,7 @@ ctrl <- trainControl(
 # ============================================================
 # MODELO 1 — Logística baseline
 # ============================================================
-cat("\n>>> [1/5] Logística baseline...\n")
+cat("\n>>> [1] Logística baseline...\n")
 set.seed(SEED)
 
 m1 <- train(

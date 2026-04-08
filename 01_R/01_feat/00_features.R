@@ -13,15 +13,15 @@ feature_engineer <- function(df) {
       # --- 1. Ratio de dependencia -------------------------
       # (IDB Costa Rica Kaggle 2018)
       ratio_dependencia = (n_menores_18 + n_mayores_65) /
-        pmax(n_personas - n_menores_18 - n_mayores_65, 1),
+        pmax(nper - n_menores_18 - n_mayores_65, 1),
       
       # --- 2. Hacinamiento --------------------------------
       # (Banerjee 2018, Mentalbreaks 2019)
-      hacinamiento      = n_personas / pmax(p5000, 1),
+      hacinamiento      = nper / pmax(p5000, 1),
       
       # --- 3. Cuartos por persona -------------------------
       # (Browne et al. 2018)
-      cuartos_per_cap   = p5000 / pmax(n_personas, 1),
+      cuartos_per_cap   = p5000 / pmax(nper, 1),
       
       # --- 4. Interacción educación × ocupación -----------
       # (Nkurunziza et al. 2024, Marrugo-Arnedo et al. 2015)
@@ -37,7 +37,7 @@ feature_engineer <- function(df) {
       
       # --- 7. Polinomio tamaño del hogar ------------------
       # (UN Statistics 2005, SOAS 2005)
-      n_personas_sq     = n_personas^2,
+      nper_sq     = nper^2,
       
       # --- 8. Polinomio edad promedio ---------------------
       # (Obando Rozo & Andrián 2015, Banerjee 2018)

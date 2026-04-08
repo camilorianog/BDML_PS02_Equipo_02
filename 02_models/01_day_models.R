@@ -84,49 +84,6 @@ guardar_modelo(m2, nombre_m2, DIA, dir_dia, opt2$threshold, opt2$f1)
 generar_submission(m2, test, opt2$threshold, DIA)
 
 # ============================================================
-# MODELO 4 — Elastic net mix (alpha = 0.5)
-# ============================================================
-cat("\n>>> [4/5] Elastic net mix...\n")
-set.seed(SEED)
-
-m3 <- train(
-  pobre ~ .,
-  data      = train |> select(-id),
-  method    = "glmnet",
-  family    = "binomial",
-  trControl = ctrl,
-  metric    = "AUC",
-  tuneGrid  = expand.grid(
-    alpha  = 0.5,
-    lambda = 10^seq(-4, 1, length = 30)
-  )
-)
-
-opt4 <- optimizar_threshold(m4, train, train$pobre)
-guardar_modelo(m4, "04_elastic_mix", DIA, dir_dia, opt4$threshold, opt4$f1)
-generar_submission(m4, test, opt4$threshold, "04_elastic_mix", DIA)
-
-# ============================================================
-# MODELO 5 — Elastic net full grid
-# ============================================================
-cat("\n>>> [5/5] Elastic net full grid...\n")
-set.seed(SEED)
-
-m4 <- train(
-  pobre ~ .,
-  data      = train |> select(-id),
-  method    = "glmnet",
-  family    = "binomial",
-  trControl = ctrl,
-  metric    = "AUC",
-  tuneGrid  = EN_GRID
-)
-
-opt5 <- optimizar_threshold(m5, train, train$pobre)
-guardar_modelo(m5, "05_elastic_full", DIA, dir_dia, opt5$threshold, opt5$f1)
-generar_submission(m5, test, opt5$threshold, "05_elastic_full", DIA)
-
-# ============================================================
 # RESUMEN DEL DÍA
 # ============================================================
 cat("\n======================================================\n")

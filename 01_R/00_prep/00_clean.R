@@ -101,10 +101,15 @@ test_p  <- test_p  |> janitor::clean_names()
 # --- Agregar personas al nivel de hogar ---------------------
 agregar_personas <- function(df_personas) {
   df_personas |>
+    mutate(
+      # Educación: 9 = no sabe/no informa → origen de nivel_educ_max7
+      p6210 = na_if(p6210, 9),
+      # Salud: 9 = no sabe/no informa
+      p6090 = na_if(p6090, 9)
+      ) |>
     group_by(id) |>
     summarise(
       # Demografía
-      n_personas    = n(),
       prop_mujeres  = mean(p6020 == 2, na.rm = TRUE),
       edad_promedio = mean(p6040, na.rm = TRUE),
       edad_max      = max(p6040, na.rm = TRUE),
@@ -114,9 +119,10 @@ agregar_personas <- function(df_personas) {
       jefe_mujer    = as.integer(any(p6050 == 1 & p6020 == 2, na.rm = TRUE)),
       
       # Educación
-      nivel_educ_max = factor(max(p6210, na.rm = TRUE),
-                              levels = 1:7),
-      n_sin_educacion   = sum(p6210 == 1, na.rm = TRUE),
+      nivel_educ_max = {
+        val <- suppressWarnings(max(p6210, na.rm = TRUE))
+        factor(ifelse(is.infinite(val), NA_real_, val), levels = 1:6)},
+        n_sin_educacion   = sum(p6210 == 1, na.rm = TRUE),
       
       # Estado laboral
       n_ocupados        = sum(oc == 1, na.rm = TRUE),
@@ -192,7 +198,8 @@ vars_laborales <- c(
   "horas_trabajo_prom",
   "prop_segundo_trabajo",
   "prop_cotiza_pension",
-  "prop_reg_subsidiado"
+  "prop_reg_subsidiado",
+  "prop_empresa_pequena"
 )
 
 train <- train |>
@@ -204,11 +211,9 @@ test <- test |>
 # --- Imputación NAs residuales ------------------------------
 # nivel_educ_max: hogares sin info educativa → moda = 2 (primaria)
 train <- train |>
-  mutate(nivel_educ_max = fct_explicit_na(nivel_educ_max,
-                                          na_level = "2"))
+  mutate(nivel_educ_max = fct_na_value_to_level(nivel_educ_max, level = "2"))
 test <- test |>
-  mutate(nivel_educ_max = fct_explicit_na(nivel_educ_max,
-                                          na_level = "2"))
+  mutate(nivel_educ_max = fct_na_value_to_level(nivel_educ_max, level = "2"))
 
 # prop_afiliado_salud y formal_x_salud → 0
 train <- train |>
@@ -217,6 +222,31 @@ train <- train |>
 test <- test |>
   mutate(across(c(prop_afiliado_salud),
                 ~ replace_na(., 0)))
+
+# --- Verificar stats descriptivas --------------------------------------------
+
+skim(train |> select(-id))
+
+# --- Winsorización de outliers extremos ---------------------
+winsorizr <- function(x, p = 0.99) {
+  cap <- quantile(x, p, na.rm = TRUE)
+  pmin(x, cap)
+}
+
+vars_winsorizar <- c(
+  "p5000",
+  "p5010",
+  "nper",
+  "npersug",
+  "n_pet",
+  "n_menores_18",
+  "n_ocupados",
+  "n_inactivos",
+  "horas_trabajo_prom"
+)
+
+train <- train |> mutate(across(all_of(vars_winsorizar), winsorizr))
+test  <- test  |> mutate(across(all_of(vars_winsorizar), winsorizr))
 
 # --- Guardar ------------------------------------------------
 saveRDS(train, here(paths$processed, "train_clean.rds"))
