@@ -26,9 +26,9 @@ ctrl <- trainControl(
 # MODELO 1 — LPM baseline
 # ============================================================
 cat("\n>>> [lpm - 1/1] Linear Probability Model...\n")
+tic("LPM baseline")
 set.seed(SEED)
 
-tic()
 m1 <- train(
   pobre_num ~ .,
   data      = train |> select(-id, -pobre),

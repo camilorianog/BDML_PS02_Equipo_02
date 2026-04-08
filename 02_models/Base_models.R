@@ -28,9 +28,9 @@ ctrl <- trainControl(
 # MODELO 1 — Logística baseline
 # ============================================================
 cat("\n>>> [base - 1/1] Logística baseline...\n")
+tic("Logística baseline")
 set.seed(SEED)
 
-tic()
 m1 <- train(
   pobre ~ .,
   data      = train |> select(-id),

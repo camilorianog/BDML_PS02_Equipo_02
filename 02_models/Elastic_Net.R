@@ -28,9 +28,9 @@ ctrl <- trainControl(
 # MODELO 1 — Ridge (alpha = 0)
 # ============================================================
 cat("\n>>> [elastic_net - 1/4] Ridge...\n")
+tic("Ridge")
 set.seed(SEED)
 
-tic()
 m1 <- train(
   pobre ~ .,
   data      = train |> select(-id),
@@ -54,9 +54,9 @@ toc()
 # MODELO 2 — Lasso (alpha = 1)
 # ============================================================
 cat("\n>>> [elastic_net - 2/4] Lasso...\n")
+tic("Lasso")
 set.seed(SEED)
 
-tic()
 m2 <- train(
   pobre ~ .,
   data      = train |> select(-id),
@@ -80,9 +80,9 @@ toc()
 # MODELO 3 — Mix (alpha = 0.5)
 # ============================================================
 cat("\n>>> [elastic_net - 3/4] Mix...\n")
+tic("Mix (alpha = 0.5)")
 set.seed(SEED)
 
-tic()
 m3 <- train(
   pobre ~ .,
   data      = train |> select(-id),
@@ -106,9 +106,9 @@ toc()
 # MODELO 4 — Full grid AUC
 # ============================================================
 cat("\n>>> [elastic_net - 4/4] Full grid...\n")
+tic("Full grid AUC")
 set.seed(SEED)
 
-tic()
 m4 <- train(
   pobre ~ .,
   data      = train |> select(-id),
@@ -130,9 +130,9 @@ toc()
 # MODELO 5 — Full grid F
 # ============================================================
 cat("\n>>> [elastic_net - 5/5] Full grid Pre-Process...\n")
+tic("Full grid F")
 set.seed(SEED)
 
-tic()
 m5 <- train(
   pobre ~ .,
   data      = train |> select(-id),
