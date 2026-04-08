@@ -17,6 +17,7 @@ pacman::p_load(
   # Manipulación de datos
   tidyverse,
   janitor,
+  skimr,
   
   # Modelado
   caret,
