@@ -17,7 +17,6 @@ pacman::p_load(
   # Manipulación de datos
   tidyverse,
   janitor,
-  skimr,
   
   # Modelado
   caret,
@@ -30,10 +29,6 @@ pacman::p_load(
   #Gráficos
   ggplot2
 )
-
-# --- wd -----------------------------------
-
-setwd(here())
 
 # --- Gestión de funciones -----------------------------------
 
@@ -74,6 +69,14 @@ paths <- list(
 # --- Crear carpetas si no existen ---------------------------
 invisible(lapply(paths, dir.create, recursive = TRUE, showWarnings = FALSE))
 
+# Crear carpetas de modelos por tipo
+model_dirs <- c("Base_models", "LPM", "Logit", "Elastic_Net",
+                "CART", "Random_Forest", "Boosting", "Naive_Bayes")
+invisible(lapply(model_dirs, function(d) {
+  dir.create(here("02_models", d), recursive = TRUE, showWarnings = FALSE)
+}))
+
+
 # ============================================================
 # PIPELINE
 # ============================================================
@@ -101,7 +104,14 @@ toc()
 
 cat("\n>>> [3/4] Entrenamiento de modelos...\n")
 tic("Modelos")
-source(here("02_models", "01_day_models.R"))
+source(here("02_models", "Base_models.R"))
+source(here("02_models", "LPM.R"))
+source(here("02_models", "Logit.R"))
+source(here("02_models", "Elastic_Net.R"))
+source(here("02_models", "CART.R"))
+source(here("02_models", "Random_Forest.R"))
+source(here("02_models", "Boosting.R"))
+source(here("02_models", "Naive_Bayes.R"))
 toc()
 
 # --- 4. Submissions -----------------------------------------
@@ -109,8 +119,7 @@ toc()
 cat("\n>>> [4/4] Generando submissions...\n")
 tic("Submissions")
 
-# source(here("04_submissions", "01_day_01", "00_generar_submission.R"))
-
-
 toc()
+
+
 
