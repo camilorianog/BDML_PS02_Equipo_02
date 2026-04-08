@@ -121,7 +121,7 @@ generar_submission(m4, test, opt4$threshold, TIPO)
 # ============================================================
 # MODELO 5 — Full grid (Pre-processed)
 # ============================================================
-cat("\n>>> [elastic_net - 4/4] Full grid...\n")
+cat("\n>>> [elastic_net - 5/5] Full grid Pre-Process...\n")
 set.seed(SEED)
 
 m5 <- train(
@@ -153,7 +153,7 @@ read.csv(here(paths$models, "log.csv")) |>
   print()
 
 # --- Limpiar entorno ----------------------------------------
-rm(m1, m2, m3, m4, ctrl,
+rm(m1, m2, m3, m4,m5, ctrl,
    opt1, opt2, opt3, opt4,
    nombre_m1, nombre_m2, nombre_m3, nombre_m4,
    dir_modelo, TIPO)

@@ -1,11 +1,11 @@
 # ============================================================
-# 00_day_models.R
-# Día 00 — Logística baseline + Elastic net
+# base.R
+# Modelos base — Logística baseline
 # ============================================================
 
-DIA <- "00"
-dir_dia <- here(paths$models, paste0( DIA, "_day"))
-dir.create(dir_dia, recursive = TRUE, showWarnings = FALSE)
+TIPO      <- "Base_models"
+dir_modelo <- here(paths$models, TIPO)
+dir.create(dir_modelo, recursive = TRUE, showWarnings = FALSE)
 
 # --- Cargar datos -------------------------------------------
 train <- readRDS(here(paths$processed, "train_features.rds"))
@@ -27,7 +27,7 @@ ctrl <- trainControl(
 # ============================================================
 # MODELO 1 — Logística baseline
 # ============================================================
-cat("\n>>> [1] Logística baseline...\n")
+cat("\n>>> [base - 1/1] Logística baseline...\n")
 set.seed(SEED)
 
 m1 <- train(
@@ -40,11 +40,9 @@ m1 <- train(
 )
 
 opt1 <- optimizar_threshold(m1, train, train$pobre)
-guardar_modelo(m1, "01_logit_baseline", DIA, dir_dia, opt1$threshold, opt1$f1)
-generar_submission(m1, test, opt1$threshold, DIA)
+guardar_modelo(m1, "logit_baseline", TIPO, dir_modelo, opt1$threshold, opt1$f1)
+generar_submission(m1, test, opt1$threshold, TIPO)
 
 # --- Limpiar entorno ----------------------------------------
-rm(m1, m2, m3, m4, m5, ctrl,
-   opt1, opt2, opt3, opt4, opt5,
-   dir_dia, DIA)
+rm(m1, ctrl, opt1, dir_modelo, TIPO)
 gc()
