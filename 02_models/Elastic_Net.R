@@ -119,6 +119,29 @@ guardar_modelo(m4, nombre_m4, TIPO, dir_modelo, opt4$threshold, opt4$f1)
 generar_submission(m4, test, opt4$threshold, TIPO)
 
 # ============================================================
+# MODELO 5 — Full grid (Pre-processed)
+# ============================================================
+cat("\n>>> [elastic_net - 5/5] Full grid Pre-Process...\n")
+set.seed(SEED)
+
+m5 <- train(
+  pobre ~ .,
+  data      = train |> select(-id),
+  method    = "glmnet",
+  family    = "binomial",
+  trControl = ctrl,
+  metric    = "AUC",
+  preProcess = c("center", "scale"),
+  tuneGrid  = EN_GRID
+)
+
+opt5      <- optimizar_threshold(m5, train, train$pobre)
+nombre_m5 <- paste0("EN_full_lambda_", round(m5$bestTune$lambda, 6),
+                    "_alpha_",         m5$bestTune$alpha)
+guardar_modelo(m5, nombre_m4, TIPO, dir_modelo, opt5$threshold, opt5$f1)
+generar_submission(m5, test, opt4$threshold, TIPO)
+
+# ============================================================
 # RESUMEN
 # ============================================================
 cat("\n======================================================\n")
@@ -130,7 +153,7 @@ read.csv(here(paths$models, "log.csv")) |>
   print()
 
 # --- Limpiar entorno ----------------------------------------
-rm(m1, m2, m3, m4, ctrl,
+rm(m1, m2, m3, m4,m5, ctrl,
    opt1, opt2, opt3, opt4,
    nombre_m1, nombre_m2, nombre_m3, nombre_m4,
    dir_modelo, TIPO)
