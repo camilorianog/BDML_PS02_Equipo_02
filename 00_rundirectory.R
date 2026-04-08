@@ -22,6 +22,7 @@ pacman::p_load(
   # Modelado
   caret,
   glmnet,
+  randomForest,
   
   # Utilidades
   yardstick,
@@ -31,7 +32,7 @@ pacman::p_load(
   ggplot2
 )
 
-# --- wd -----------------------------------
+# --- Wroking Directory -----------------------------------
 
 setwd(here())
 
@@ -67,7 +68,6 @@ paths <- list(
   feat        = here("01_R",    "01_feat"),
   functions   = here("01_R",    "02_functions"),
   models      = here("02_models"),
-  retired     = here("02_models", "99_retired"),
   submissions = here("03_submissions")
 )
 
@@ -102,15 +102,5 @@ toc()
 cat("\n>>> [3/4] Entrenamiento de modelos...\n")
 tic("Modelos")
 source(here("02_models", "01_day_models.R"))
-toc()
-
-# --- 4. Submissions -----------------------------------------
-
-cat("\n>>> [4/4] Generando submissions...\n")
-tic("Submissions")
-
-# source(here("04_submissions", "01_day_01", "00_generar_submission.R"))
-
-
 toc()
 

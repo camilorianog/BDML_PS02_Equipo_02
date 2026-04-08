@@ -1,11 +1,6 @@
 # ============================================================
-# 01_day_models.R
-# Día 01 — Elastic net
+# EN.R — Modelos Elastic Net
 # ============================================================
-
-DIA <- "01"
-dir_dia <- here(paths$models, paste0( DIA, "_day"))
-dir.create(dir_dia, recursive = TRUE, showWarnings = FALSE)
 
 # --- Cargar datos -------------------------------------------
 train <- readRDS(here(paths$processed, "train_features.rds"))
@@ -24,41 +19,50 @@ ctrl <- trainControl(
   savePredictions = "final"
 )
 
+
 # ============================================================
-# MODELO 1 — Elastic net ridge (alpha = 0)
+# DÍA 00
 # ============================================================
 
-cat("\n>>> [2/5] Elastic net ridge...\n")
+DIA     <- "00"
+dir_dia <- here(paths$models, paste0(DIA, "_day"))
+dir.create(dir_dia, recursive = TRUE, showWarnings = FALSE)
+
+# --- MODELO 1 — Logística baseline -------------------------
+cat("\n>>> [1] Logística baseline...\n")
 set.seed(SEED)
+start_time <- Sys.time()
 
 m1 <- train(
   pobre ~ .,
   data      = train |> select(-id),
-  method    = "glmnet",
-  family    = "binomial",
+  method    = "glm",
+  family    = binomial(link = "logit"),
   trControl = ctrl,
-  metric    = "AUC",
-  tuneGrid  = expand.grid(
-    alpha  = 0,
-    lambda = 10^seq(-4, 1, length = 30)
-  )
+  metric    = "AUC"
 )
 
-opt1 <- optimizar_threshold(m1, train, train$pobre)
-
-nombre_m1 <- paste0(
-  "EN_lambda_", round(m1$bestTune$lambda, 6),
-  "_alpha_",    m1$bestTune$alpha
-)
+opt1     <- optimizar_threshold(m1, train, train$pobre)
+nombre_m1 <- "logit_baseline"
 
 guardar_modelo(m1, nombre_m1, DIA, dir_dia, opt1$threshold, opt1$f1)
-generar_submission(m1, test, opt1$threshold, DIA)
+generar_submission(m1, test, opt1$threshold, DIA, nombre_m1)
+
+cat(sprintf("Tiempo: %.1f min\n", as.numeric(difftime(Sys.time(), start_time, units = "mins"))))
+
 
 # ============================================================
-# MODELO 2 — Elastic net lasso (alpha = 1)
+# DÍA 01
 # ============================================================
-cat("\n>>> [3/5] Elastic net lasso...\n")
+
+DIA     <- "01"
+dir_dia <- here(paths$models, paste0(DIA, "_day"))
+dir.create(dir_dia, recursive = TRUE, showWarnings = FALSE)
+
+# --- MODELO 2 — Ridge (alpha = 0) --------------------------
+cat("\n>>> [2] Ridge (alpha = 0)...\n")
 set.seed(SEED)
+start_time <- Sys.time()
 
 m2 <- train(
   pobre ~ .,
@@ -68,28 +72,57 @@ m2 <- train(
   trControl = ctrl,
   metric    = "AUC",
   tuneGrid  = expand.grid(
-    alpha  = 1,
-    lambda = 10^seq(-4, 1, length = 30)
+    alpha  = 0,
+    lambda = 10^seq(-4, 1, length = 20)
   )
 )
 
-opt2 <- optimizar_threshold(m2, train, train$pobre)
-
+opt2      <- optimizar_threshold(m2, train, train$pobre) 
 nombre_m2 <- paste0(
-  "EN_lambda_", round(m2$bestTune$lambda, 6),
+  "EN_lambda_", format(round(m2$bestTune$lambda, 6), scientific = FALSE),
   "_alpha_",    m2$bestTune$alpha
 )
 
 guardar_modelo(m2, nombre_m2, DIA, dir_dia, opt2$threshold, opt2$f1)
-generar_submission(m2, test, opt2$threshold, DIA)
+generar_submission(m2, test, opt2$threshold, DIA, nombre_m2)  
 
-# ============================================================
-# MODELO 3 — Elastic net mix (alpha = 0.5)
-# ============================================================
-cat("\n>>> [4/5] Elastic net mix...\n")
+cat(sprintf("Tiempo: %.1f min\n", as.numeric(difftime(Sys.time(), start_time, units = "mins"))))
+
+# --- MODELO 3 — Lasso (alpha = 1) --------------------------
+cat("\n>>> [3] Lasso (alpha = 1)...\n")
 set.seed(SEED)
+start_time <- Sys.time()
 
-m3 <- train(
+m3 <- train(                                               
+  pobre ~ .,
+  data      = train |> select(-id),
+  method    = "glmnet",
+  family    = "binomial",
+  trControl = ctrl,
+  metric    = "AUC",
+  tuneGrid  = expand.grid(
+    alpha  = 1,
+    lambda = 10^seq(-4, 1, length = 20)
+  )
+)
+
+opt3      <- optimizar_threshold(m3, train, train$pobre)
+nombre_m3 <- paste0(
+  "EN_lambda_", format(round(m3$bestTune$lambda, 6), scientific = FALSE),
+  "_alpha_",    m3$bestTune$alpha
+)
+
+guardar_modelo(m3, nombre_m3, DIA, dir_dia, opt3$threshold, opt3$f1)
+generar_submission(m3, test, opt3$threshold, DIA, nombre_m3)  
+
+cat(sprintf("Tiempo: %.1f min\n", as.numeric(difftime(Sys.time(), start_time, units = "mins"))))
+
+# --- MODELO 4 — Elastic Net mix (alpha = 0.5) --------------
+cat("\n>>> [4] Elastic Net mix (alpha = 0.5)...\n")        
+set.seed(SEED)
+start_time <- Sys.time()
+
+m4 <- train(                                               
   pobre ~ .,
   data      = train |> select(-id),
   method    = "glmnet",
@@ -98,22 +131,36 @@ m3 <- train(
   metric    = "AUC",
   tuneGrid  = expand.grid(
     alpha  = 0.5,
-    lambda = 10^seq(-4, 1, length = 30)
+    lambda = 10^seq(-4, 1, length = 20)
   )
 )
 
-opt3 <- optimizar_threshold(m3, train, train$pobre)
+opt4      <- optimizar_threshold(m4, train, train$pobre)  
+nombre_m4 <- paste0(
+  "EN_lambda_", format(round(m4$bestTune$lambda, 6), scientific = FALSE),
+  "_alpha_",    m4$bestTune$alpha
+)
 
-guardar_modelo(m3, "03_elastic_mix", DIA, dir_dia, opt3$threshold, opt3$f1)
-generar_submission(m3, test, opt3$threshold, DIA)
+guardar_modelo(m4, nombre_m4, DIA, dir_dia, opt4$threshold, opt4$f1)
+generar_submission(m4, test, opt4$threshold, DIA, nombre_m4)
+
+cat(sprintf("Tiempo: %.1f min\n", as.numeric(difftime(Sys.time(), start_time, units = "mins"))))
+
 
 # ============================================================
-# MODELO 4 — Elastic net full grid
+# DÍA 03
 # ============================================================
-cat("\n>>> [5/5] Elastic net full grid...\n")
+
+DIA     <- "03"
+dir_dia <- here(paths$models, paste0(DIA, "_day"))
+dir.create(dir_dia, recursive = TRUE, showWarnings = FALSE)
+
+# --- MODELO 5 — EN full grid, metric AUC -------------------
+cat("\n>>> [5] EN full grid (AUC)...\n")                   
 set.seed(SEED)
+start_time <- Sys.time()
 
-m4 <- train(
+m5 <- train(
   pobre ~ .,
   data      = train |> select(-id),
   method    = "glmnet",
@@ -123,19 +170,39 @@ m4 <- train(
   tuneGrid  = EN_GRID
 )
 
-opt4 <- optimizar_threshold(m4, train, train$pobre)
+opt5      <- optimizar_threshold(m5, train, train$pobre)
+nombre_m5 <- paste0(
+  "EN_lambda_", format(round(m5$bestTune$lambda, 6), scientific = FALSE),
+  "_alpha_",    m5$bestTune$alpha
+)
 
-guardar_modelo(m4, "04_elastic_full", DIA, dir_dia, opt4$threshold, opt4$f1)
-generar_submission(m4, test, opt4$threshold, "04_elastic_full", DIA)
+guardar_modelo(m5, nombre_m5, DIA, dir_dia, opt5$threshold, opt5$f1)
+generar_submission(m5, test, opt5$threshold, DIA, nombre_m5)
 
-# ============================================================
-# RESUMEN DEL DÍA
-# ============================================================
-cat("\n======================================================\n")
-cat("  Resumen día", DIA, "\n")
-cat("======================================================\n")
+cat(sprintf("Tiempo: %.1f min\n", as.numeric(difftime(Sys.time(), start_time, units = "mins"))))
 
-read.csv(here(paths$models, "log.csv")) |>
-  filter(dia == DIA) |>
-  arrange(desc(cv_f1)) |>
-  print()
+# --- MODELO 6 — EN full grid, metric F ---------------------
+cat("\n>>> [6] EN full grid (F)...\n")
+set.seed(SEED)
+start_time <- Sys.time()
+
+m6 <- train(                                               
+  pobre ~ .,
+  data      = train |> select(-id),
+  method    = "glmnet",
+  family    = "binomial",
+  trControl = ctrl,
+  metric    = "F",                                        
+  tuneGrid  = EN_GRID
+)
+
+opt6      <- optimizar_threshold(m6, train, train$pobre)
+nombre_m6 <- paste0(
+  "EN_lambda_", format(round(m6$bestTune$lambda, 6), scientific = FALSE),
+  "_alpha_",    m6$bestTune$alpha
+)
+
+guardar_modelo(m6, nombre_m6, DIA, dir_dia, opt6$threshold, opt6$f1)
+generar_submission(m6, test, opt6$threshold, DIA, nombre_m6)
+
+cat(sprintf("Tiempo: %.1f min\n", as.numeric(difftime(Sys.time(), start_time, units = "mins"))))
