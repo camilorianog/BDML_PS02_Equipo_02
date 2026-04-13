@@ -106,7 +106,7 @@ agregar_personas <- function(df_personas) {
       p6210 = na_if(p6210, 9),
       # Salud: 9 = no sabe/no informa
       p6090 = na_if(p6090, 9)
-      ) |>
+    ) |>
     group_by(id) |>
     summarise(
       # Demografía
@@ -122,7 +122,7 @@ agregar_personas <- function(df_personas) {
       nivel_educ_max = {
         val <- suppressWarnings(max(p6210, na.rm = TRUE))
         factor(ifelse(is.infinite(val), NA_real_, val), levels = 1:6)},
-        n_sin_educacion   = sum(p6210 == 1, na.rm = TRUE),
+      n_sin_educacion   = sum(p6210 == 1, na.rm = TRUE),
       
       # Estado laboral
       n_ocupados        = sum(oc == 1, na.rm = TRUE),
@@ -142,6 +142,11 @@ agregar_personas <- function(df_personas) {
       prop_cotiza_pension  = mean(p6920 == 1, na.rm = TRUE),
       prop_afiliado_salud  = mean(p6090 == 1, na.rm = TRUE),
       prop_reg_subsidiado  = mean(p6100 == 3, na.rm = TRUE),
+      
+      # Características del jefe del hogar 
+      educ_jefe = first(p6210[p6050 == 1]), 
+      ocup_jefe = first(oc[p6050 == 1]), 
+      edad_jefe = first(p6040[p6050 == 1]),
       
       .groups = "drop"
     )
@@ -173,7 +178,7 @@ cat("\nDims después del join:\n")
 cat("  train:", dim(train), "\n")
 cat("  test: ", dim(test),  "\n")
 
-hogares_sin_personas <- sum(is.na(train$n_personas))
+hogares_sin_personas <- sum(is.na(train$n_per))
 if (hogares_sin_personas > 0) {
   cat("  AVISO:", hogares_sin_personas,
       "hogares sin match en personas\n")
@@ -215,6 +220,17 @@ train <- train |>
 test <- test |>
   mutate(nivel_educ_max = fct_na_value_to_level(nivel_educ_max, level = "2"))
 
+# educ_jefe: misma lógica que nivel_educ_max → primaria
+train <- train |> mutate(educ_jefe = replace_na(educ_jefe, 2))
+test  <- test  |> mutate(educ_jefe = replace_na(educ_jefe, 2))
+
+#ocup_jefe → 0
+train <- train |>
+  mutate(across(c(ocup_jefe),
+                ~ replace_na(., 0)))
+test <- test |>
+  mutate(across(c(ocup_jefe),
+                ~ replace_na(., 0)))
 # prop_afiliado_salud y formal_x_salud → 0
 train <- train |>
   mutate(across(c(prop_afiliado_salud),

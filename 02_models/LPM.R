@@ -36,7 +36,7 @@ m1 <- train(
   trControl = ctrl
 )
 
-opt1 <- optimizar_threshold(m1, train_lpm, train$pobre_num)
+opt1 <- optimizar_threshold(m1, train, train$pobre_num)
 cat("    Threshold óptimo:     ", round(opt1$threshold, 4), "\n")
 cat("    F1 (threshold óptimo):", round(opt1$f1, 4), "\n")
 
