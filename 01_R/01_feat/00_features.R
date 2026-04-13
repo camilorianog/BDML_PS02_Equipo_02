@@ -54,7 +54,11 @@ feature_engineer <- function(df) {
       #hacer enfasis en que si un hogar no tiene ocupados.
       #ayuda a modelar un poco mejor no linealidades de
       # ratio de dependencia alrededor de 1
-      sin_ocupados = as.integer(n_ocupados == 0)
+      sin_ocupados = as.integer(n_ocupados == 0),
+      
+      # --- 12. Educación jefe × ocupación jefe ------------------
+      educ_jefe_x_ocup      = as.integer(educ_jefe) * ocup_jefe,
+
     )
 }
 

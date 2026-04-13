@@ -231,6 +231,7 @@ train <- train |>
 test <- test |>
   mutate(across(c(ocup_jefe),
                 ~ replace_na(., 0)))
+
 # prop_afiliado_salud y formal_x_salud → 0
 train <- train |>
   mutate(across(c(prop_afiliado_salud),
