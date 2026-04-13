@@ -12,44 +12,53 @@ feature_engineer <- function(df) {
       
       # --- 1. Ratio de dependencia -------------------------
       # (IDB Costa Rica Kaggle 2018)
-      ratio_dependencia = (n_menores_18 + n_mayores_65) /
-        pmax(nper - n_menores_18 - n_mayores_65, 1),
+      ratio_dependencia = (nper-n_ocupados) /
+        pmax(nper, 1),
       
       # --- 2. Hacinamiento --------------------------------
-      # (Banerjee 2018, Mentalbreaks 2019)
+      # (Banerjee 2018,Browne et al. 2018, Mentalbreaks 2019)
       hacinamiento      = nper / pmax(p5000, 1),
       
-      # --- 3. Cuartos por persona -------------------------
-      # (Browne et al. 2018)
-      cuartos_per_cap   = p5000 / pmax(nper, 1),
-      
-      # --- 4. Interacción educación × ocupación -----------
+      # --- 3. Interacción educación × ocupación -----------
       # (Nkurunziza et al. 2024, Marrugo-Arnedo et al. 2015)
       educ_x_ocup       = as.integer(nivel_educ_max) * tasa_ocupacion,
       
-      # --- 5. Interacción zona × ocupación ----------------
+      # --- 4. Interacción zona × ocupación ----------------
       # (Obando Rozo & Andrián 2015, World Bank 2019)
       rural_x_ocup      = as.integer(clase == "2") * tasa_ocupacion,
       
-      # --- 6. Interacción formalidad × seguridad social ---
+      # --- 5. Interacción formalidad × seguridad social ---
       # (World Bank 2019, UNDP & ECLAC 2024)
       formal_x_salud    = prop_cotiza_pension * prop_afiliado_salud,
       
-      # --- 7. Polinomio tamaño del hogar ------------------
+      # --- 6. Polinomio tamaño del hogar ------------------
       # (UN Statistics 2005, SOAS 2005)
       nper_sq     = nper^2,
       
-      # --- 8. Polinomio edad promedio ---------------------
+      # --- 7. Polinomio edad promedio ---------------------
       # (Obando Rozo & Andrián 2015, Banerjee 2018)
       edad_prom_sq      = edad_promedio^2,
       
-      # --- 9. Interacción género × inactividad ------------
+      # --- 8. Interacción género × inactividad ------------
       # (Corral et al. 2024, UNDP & ECLAC 2024)
       mujeres_x_inact   = prop_mujeres * (1 - tasa_ocupacion),
       
-      # --- 10. Jefatura femenina × inactividad ------------
+      # --- 9. Jefatura femenina × inactividad ------------
       # (Bleynat et al. 2020, Chant 2003, GEIH 2018)
-      jefe_mujer_inact  = jefe_mujer * (1 - tasa_ocupacion)
+      jefe_mujer_inact  = jefe_mujer * (1 - tasa_ocupacion),
+      
+      #--- 10. Tasa inactivos -----------------------------
+      tasa_inactivos = n_inactivos / pmax(n_pet, 1),
+      
+      #--- 11. Dummy sin ocupados ------------------------
+      #hacer enfasis en que si un hogar no tiene ocupados.
+      #ayuda a modelar un poco mejor no linealidades de
+      # ratio de dependencia alrededor de 1
+      sin_ocupados = as.integer(n_ocupados == 0),
+      
+      # --- 12. Educación jefe × ocupación jefe ------------------
+      educ_jefe_x_ocup      = as.integer(educ_jefe) * ocup_jefe,
+
     )
 }
 
