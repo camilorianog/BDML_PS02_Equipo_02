@@ -22,6 +22,7 @@ pacman::p_load(
   # Modelado
   caret,
   glmnet,
+  naivebayes,
   
   # Utilidades
   yardstick,
