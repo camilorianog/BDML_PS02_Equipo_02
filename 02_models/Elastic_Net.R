@@ -129,7 +129,7 @@ toc()
 # ============================================================
 # MODELO 5 — Full grid F
 # ============================================================
-cat("\n>>> [elastic_net - 5/5] Full grid Pre-Process...\n")
+cat("\n>>> [elastic_net - 5/5] Full grid F metric...\n")
 tic("Full grid F")
 set.seed(SEED)
 

@@ -23,6 +23,7 @@ pacman::p_load(
   caret,
   glmnet,
   naivebayes,
+  ranger,
   
   # Utilidades
   yardstick,
