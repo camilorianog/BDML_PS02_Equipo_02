@@ -6,20 +6,23 @@
 optimizar_threshold <- function(modelo, datos, target) {
   
   if (modelo$method == "lm") {
-    probs  <- pmin(pmax(predict(modelo, datos), 0), 1)
-    target <- factor(ifelse(target == 1, "pobre", "no_pobre"),
-                     levels = c("no_pobre", "pobre"))
+    probs      <- pmin(pmax(predict(modelo, datos), 0), 1)
+    target_bin <- as.integer(target == 1)
   } else {
-    probs  <- predict(modelo, datos, type = "prob")[, "pobre"]
+    probs      <- modelo$pred$pobre
+    target_bin <- as.integer(modelo$pred$obs == "pobre")
   }
   
-  thresholds <- seq(0.1, 0.9, by = 0.01)
+  thresholds <- seq(0.2, 0.5, by = 0.01)
   
   f1_scores <- map_dbl(thresholds, function(t) {
-    preds <- factor(ifelse(probs >= t, "pobre", "no_pobre"),
-                    levels = c("no_pobre", "pobre"))
-    cm <- confusionMatrix(preds, target, positive = "pobre")
-    cm$byClass["F1"]
+    preds     <- as.integer(probs >= t)
+    tp        <- sum(preds == 1 & target_bin == 1)
+    fp        <- sum(preds == 1 & target_bin == 0)
+    fn        <- sum(preds == 0 & target_bin == 1)
+    precision <- if (tp + fp == 0) 0 else tp / (tp + fp)
+    recall    <- if (tp + fn == 0) 0 else tp / (tp + fn)
+    if (precision + recall == 0) 0 else 2 * precision * recall / (precision + recall)
   })
   
   best_t  <- thresholds[which.max(f1_scores)]

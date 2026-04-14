@@ -1,3 +1,10 @@
 "tipo","nombre","threshold","cv_f1","kaggle_f1"
 "01_Base_models","logit_baseline",0.33,0.6742,NA
 "02_LPM","lpm_baseline",0.36,0.6624,NA
+"03_Logit","logit_baseline",0.33,0.6742,NA
+"03_Logit","logit_scaled",0.33,0.6742,NA
+"04_Elastic_Net","EN_ridge_lambda_0.011721",0.31,0.6655,NA
+"04_Elastic_Net","EN_lasso_lambda_1e-04",0.35,0.674,NA
+"04_Elastic_Net","EN_mix_lambda_1e-04",0.35,0.6741,NA
+"04_Elastic_Net","EN_full_AUC_lambda_1e-04_alpha_0.25",0.35,0.6739,NA
+"04_Elastic_Net","EN_full_F_lambda_1e-04_alpha_0.75",0.35,0.6741,NA

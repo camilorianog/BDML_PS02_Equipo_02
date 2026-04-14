@@ -42,7 +42,7 @@ m1 <- train(
 
 opt1 <- optimizar_threshold(m1, train, train$pobre)
 guardar_modelo(m1, "logit_baseline", TIPO, dir_modelo, opt1$threshold, opt1$f1)
-generar_submission(m1, test, opt1$threshold, TIPO)
+generar_submission(m1, test, opt1$threshold, TIPO, "logit_baseline")
 toc()
 
 # --- Limpiar entorno ----------------------------------------
