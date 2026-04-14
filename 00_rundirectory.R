@@ -24,6 +24,7 @@ pacman::p_load(
   glmnet,
   naivebayes,
   ranger,
+  lightgbm,
   
   # Utilidades
   yardstick,
@@ -64,19 +65,22 @@ paths <- list(
   prep        = here("01_R",    "00_prep"),
   feat        = here("01_R",    "01_feat"),
   functions   = here("01_R",    "02_functions"),
+  reduced     = here("01_R",    "03_reduced"),
   models      = here("02_models"),
-  retired     = here("02_models", "99_retired"),
-  submissions = here("03_submissions")
+  classes = here("02_models","00_classes"),
+  submissions = here("02_models","01_submissions")
 )
 
 # --- Crear carpetas si no existen ---------------------------
+
 invisible(lapply(paths, dir.create, recursive = TRUE, showWarnings = FALSE))
 
 # Crear carpetas de modelos por tipo
-model_dirs <- c("Base_models", "LPM", "Logit", "Elastic_Net",
-                "CART", "Random_Forest", "Boosting", "Naive_Bayes")
+
+model_dirs <- c("00_Base_models", "01_LPM", "02_Elastic_Net",
+                "03_CART", "04_Random_Forest", "05_Boosting", "06_Naive_Bayes")
 invisible(lapply(model_dirs, function(d) {
-  dir.create(here("02_models", d), recursive = TRUE, showWarnings = FALSE)
+  dir.create(paths$submissions, recursive = TRUE, showWarnings = FALSE)
 }))
 
 
@@ -106,23 +110,20 @@ toc()
 # --- 3. Modelado --------------------------------------------
 
 cat("\n>>> [3/4] Entrenamiento de modelos...\n")
-tic("Modelos")
+
+tic("Modelos Probabilidad")
 source(here("02_models", "Base_models.R"))
 source(here("02_models", "LPM.R"))
 source(here("02_models", "Elastic_Net.R"))
+toc()
+
+# --- 3.a Construcción de base reducida para contraste -------
+source(here("01_R","03_reduced","00_reduction.R"))
+
+tic("Modelos Basados en Arboles")
 source(here("02_models", "Random_Forest.R"))
 source(here("02_models", "Logit.R"))
 source(here("02_models", "CART.R"))
 source(here("02_models", "Boosting.R"))
 source(here("02_models", "Naive_Bayes.R"))
 toc()
-
-# --- 4. Submissions -----------------------------------------
-
-cat("\n>>> [4/4] Generando submissions...\n")
-tic("Submissions")
-
-toc()
-
-
-
