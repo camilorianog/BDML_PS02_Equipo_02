@@ -24,7 +24,9 @@ pacman::p_load(
   glmnet,
   naivebayes,
   ranger,
+  xgboost,
   lightgbm,
+  bonsai,
   
   # Utilidades
   yardstick,
@@ -46,7 +48,7 @@ SEED <- 202601
 
 # --- CV -----------------------------------------------------
 
-CV_FOLDS  <- 10
+CV_FOLDS  <- 5
 CV_METRIC <- "F1"
 
 # --- Parámetros elastic net ---------------------------------
@@ -67,7 +69,7 @@ paths <- list(
   functions   = here("01_R",    "02_functions"),
   reduced     = here("01_R",    "03_reduced"),
   models      = here("02_models"),
-  classes = here("02_models","00_classes"),
+  classes     = here("02_models","00_classes"),
   submissions = here("02_models","01_submissions")
 )
 
@@ -77,12 +79,11 @@ invisible(lapply(paths, dir.create, recursive = TRUE, showWarnings = FALSE))
 
 # Crear carpetas de modelos por tipo
 
-model_dirs <- c("00_Base_models", "01_LPM", "02_Elastic_Net",
-                "03_CART", "04_Random_Forest", "05_Boosting", "06_Naive_Bayes")
+model_dirs <- c("01_Base_models", "02_LPM","03_Logit", "04_Elastic_Net",
+                "05_CART", "06_Random_Forest", "07_Boosting", "08_Naive_Bayes")
 invisible(lapply(model_dirs, function(d) {
-  dir.create(paths$submissions, recursive = TRUE, showWarnings = FALSE)
+  dir.create(file.path(paths$submissions, d), recursive = TRUE, showWarnings = FALSE)
 }))
-
 
 # ============================================================
 # PIPELINE
@@ -112,18 +113,18 @@ toc()
 cat("\n>>> [3/4] Entrenamiento de modelos...\n")
 
 tic("Modelos Probabilidad")
-source(here("02_models", "Base_models.R"))
-source(here("02_models", "LPM.R"))
-source(here("02_models", "Elastic_Net.R"))
+source(here("02_models", "00_classes", "01_Base_models.R"))
+source(here("02_models", "00_classes", "02_LPM.R"))
+source(here("02_models", "00_classes", "03_Logit.R"))
+source(here("02_models", "00_classes", "04_Elastic_Net.R"))
 toc()
 
 # --- 3.a Construcción de base reducida para contraste -------
 source(here("01_R","03_reduced","00_reduction.R"))
 
 tic("Modelos Basados en Arboles")
-source(here("02_models", "Random_Forest.R"))
-source(here("02_models", "Logit.R"))
-source(here("02_models", "CART.R"))
-source(here("02_models", "Boosting.R"))
-source(here("02_models", "Naive_Bayes.R"))
+source(here("02_models", "00_classes", "05_CART.R"))
+source(here("02_models", "00_classes", "06_Random_Forest.R"))
+source(here("02_models", "00_classes", "07_Boosting.R"))
+source(here("02_models", "00_classes", "08_Naive_Bayes.R"))
 toc()

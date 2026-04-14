@@ -240,8 +240,6 @@ test <- test |>
   mutate(across(c(prop_afiliado_salud),
                 ~ replace_na(., 0)))
 
-train$pobre <- factor(train$pobre, levels = c(0, 1), labels = c("no", "si"))
-
 # --- Verificar stats descriptivas --------------------------------------------
 
 skim(train |> select(-id))
