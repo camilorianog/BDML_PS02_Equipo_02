@@ -164,8 +164,7 @@ m5 <- train(
   num.trees = 750,
   tuneGrid  = expand.grid(
     mtry          = c(floor(mtry_default / 4),
-                      floor(mtry_default / 2),
-                      mtry_default),
+                      floor(mtry_default / 2)),
     splitrule     = "extratrees",
     min.node.size = 5
   )
