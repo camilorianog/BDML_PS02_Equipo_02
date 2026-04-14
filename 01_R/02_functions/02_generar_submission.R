@@ -32,7 +32,7 @@ generar_submission <- function(modelo, test, threshold, tipo, nombre = NULL) {
   preds <- as.integer(probs >= threshold)
   submission <- data.frame(id = test$id, pobre = preds)
   
-  dir_sub <- file.path(paths$submissions, tipo)          # <-- file.path, no here()
+  dir_sub <- file.path(paths$submissions, tipo)         
   dir.create(dir_sub, recursive = TRUE, showWarnings = FALSE)
   
   ruta <- file.path(dir_sub, paste0(nombre, ".csv"))

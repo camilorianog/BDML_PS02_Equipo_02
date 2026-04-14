@@ -4,7 +4,7 @@
 # ============================================================
 
 TIPO       <- "06_Random_Forest"
-dir_modelo <- here(paths$models, TIPO)
+dir_modelo <- here(paths$submissions, TIPO)
 dir.create(dir_modelo, recursive = TRUE, showWarnings = FALSE)
 
 # --- Cargar datos -------------------------------------------

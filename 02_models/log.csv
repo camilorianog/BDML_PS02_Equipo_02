@@ -1,12 +1,3 @@
 "tipo","nombre","threshold","cv_f1","kaggle_f1"
-"Elastic_Net","EN_ridge_lambda_0.011721",0.32,0.663,NA
-"Elastic_Net","EN_lasso_lambda_1e-04",0.32,0.6697,NA
-"Elastic_Net","EN_mix_lambda_1e-04",0.32,0.67,NA
-"Elastic_Net","EN_full_lambda_1e-04_alpha_0.25",0.32,0.6699,NA
-"Naive_Bayes","NB_default",0.9,0.5354,NA
-"Naive_Bayes","NB_kernel",0.1,0.0334,NA
-"Naive_Bayes","NB_laplace_0_kernel_FALSE_adjust_0.5",0.9,0.5354,NA
-"LPM","lpm_baseline",0.37,0.662,NA
-"Base_models","logit_baseline",0.33,0.6742,NA
-"Base_models","logit_baseline_F1",0.33,0.6742,NA
 "01_Base_models","logit_baseline",0.33,0.6742,NA
+"02_LPM","lpm_baseline",0.36,0.6624,NA

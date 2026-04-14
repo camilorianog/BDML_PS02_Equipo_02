@@ -4,7 +4,7 @@
 # ============================================================
 
 TIPO       <- "05_CART"
-dir_modelo <- here(paths$models, TIPO)
+dir_modelo <- here(paths$submissions, TIPO)
 dir.create(dir_modelo, recursive = TRUE, showWarnings = FALSE)
 
 # --- Cargar datos -------------------------------------------
