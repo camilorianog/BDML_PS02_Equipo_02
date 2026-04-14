@@ -38,10 +38,15 @@ set.seed(SEED)
 m1 <- train(
   pobre ~ .,
   data      = train |> select(-id),
-  method    = "rf",
+  method    = "ranger",
   trControl = ctrl,
   metric    = "AUC",
-  tuneGrid  = expand.grid(mtry = mtry_default)
+  num.trees = 500,
+  tuneGrid  = expand.grid(
+    mtry              = mtry_default,
+    splitrule         = "gini",
+    min.node.size     = 1
+  )
 )
 
 opt1      <- optimizar_threshold(m1, train, train$pobre)
@@ -60,11 +65,16 @@ set.seed(SEED)
 m2 <- train(
   pobre ~ .,
   data      = train |> select(-id),
-  method    = "rf",
+  method    = "ranger",
   trControl = ctrl,
   metric    = "AUC",
+  num.trees = 500,
   tuneGrid  = expand.grid(
-    mtry = c(floor(mtry_default / 2), mtry_default, floor(mtry_default * 2))
+    mtry          = c(floor(mtry_default / 2),
+                      floor(mtry_default * 1.5),
+                      floor(mtry_default * 2)),
+    splitrule     = "gini",
+    min.node.size = 1
   )
 )
 
@@ -72,6 +82,35 @@ opt2      <- optimizar_threshold(m2, train, train$pobre)
 nombre_m2 <- paste0("RF_mtry_", m2$bestTune$mtry)
 guardar_modelo(m2, nombre_m2, TIPO, dir_modelo, opt2$threshold, opt2$f1)
 generar_submission(m2, test, opt2$threshold, TIPO, nombre_m2)
+toc()
+
+# ============================================================
+# MODELO 3 — RF grid completo
+# ============================================================
+cat("\n>>> [rf - 3/3] RF grid completo...\n")
+tic("RF grid completo")
+set.seed(SEED)
+
+m3 <- train(
+  pobre ~ .,
+  data      = train |> select(-id),
+  method    = "ranger",
+  trControl = ctrl,
+  metric    = "AUC",
+  num.trees = 500,
+  tuneGrid  = expand.grid(
+    mtry          = c(floor(mtry_default / 2),
+                      mtry_default,
+                      floor(mtry_default * 2)),
+    splitrule     = c("gini", "extratrees"),
+    min.node.size = c(1, 5, 10)
+  )
+)
+
+opt3      <- optimizar_threshold(m3, train, train$pobre)
+nombre_m3 <- paste0("RF_mtry_", m3$bestTune$mtry)
+guardar_modelo(m3, nombre_m3, TIPO, dir_modelo, opt3$threshold, opt3$f1)
+generar_submission(m3, test, opt3$threshold, TIPO, nombre_m3)
 toc()
 
 # ============================================================

@@ -90,6 +90,35 @@ generar_submission(m3, test, opt3$threshold, TIPO, nombre_m3)
 toc()
 
 # ============================================================
+# MODELO 4 — CART podado (anti-overfitting)
+# cp en rango conservador + restricciones de nodo
+# ============================================================
+cat("\n>>> [cart - 4/4] CART podado...\n")
+tic("CART podado")
+set.seed(SEED)
+
+m4 <- train(
+  pobre ~ .,
+  data      = train |> select(-id),
+  method    = "rpart",
+  trControl = ctrl,
+  metric    = "AUC",
+  tuneGrid = expand.grid(cp = c(0.0001, 0.0005, 0.001, 0.005, 0.01, 0.02, 0.05)),
+  control = rpart::rpart.control(
+    minsplit  = 30,
+    minbucket = 10,
+    maxdepth  = 10
+  )
+)
+
+opt4      <- optimizar_threshold(m4, train, train$pobre)
+nombre_m4 <- paste0("CART_podado_cp_",
+                    format(round(m4$bestTune$cp, 6), scientific = FALSE))
+guardar_modelo(m4, nombre_m4, TIPO, dir_modelo, opt4$threshold, opt4$f1)
+generar_submission(m4, test, opt4$threshold, TIPO, nombre_m4)
+toc()
+
+# ============================================================
 # RESUMEN
 # ============================================================
 cat("\n======================================================\n")
