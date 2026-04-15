@@ -90,8 +90,7 @@ generar_submission(m3, test, opt3$threshold, TIPO, nombre_m3)
 toc()
 
 # ============================================================
-# MODELO 4 — CART podado (anti-overfitting)
-# cp en rango conservador + restricciones de nodo
+# MODELO 4 — CART podado
 # ============================================================
 cat("\n>>> [cart - 4/4] CART podado...\n")
 tic("CART podado")

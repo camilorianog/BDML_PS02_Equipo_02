@@ -51,7 +51,7 @@ CV_METRIC <- "F1"
 # --- Parámetros elastic net ---------------------------------
 
 EN_GRID <- expand.grid(
-  alpha  = c(0, 0.25, 0.5, 0.75, 1),
+  alpha  = seq(0.1, 0.9, by = 0.01),
   lambda = 10^seq(-4, 1, length = 20)
 )
 
