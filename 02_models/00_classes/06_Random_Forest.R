@@ -46,15 +46,14 @@ m1 <- train(
     mtry              = mtry_default,
     splitrule         = "gini",
     min.node.size     = 1
-  ), 
-  importance="permutation"
+  ),
+  oob.eror = FALSE
 )
 
 opt1      <- optimizar_threshold(m1, train, train$pobre)
 nombre_m1 <- paste0("RF_mtry_", m1$bestTune$mtry)
 guardar_modelo(m1, nombre_m1, TIPO, dir_modelo, opt1$threshold, opt1$f1)
 generar_submission(m1, test, opt1$threshold, TIPO, nombre_m1)
-imp <- importance(m1$finalModel)
 toc()
 
 # ============================================================
@@ -78,14 +77,13 @@ m2 <- train(
     splitrule     = "gini",
     min.node.size = 1
   ),
-  importance="permutation"
+  oob.eror = FALSE
 )
 
 opt2      <- optimizar_threshold(m2, train, train$pobre)
 nombre_m2 <- paste0("RF_mtry_", m2$bestTune$mtry)
 guardar_modelo(m2, nombre_m2, TIPO, dir_modelo, opt2$threshold, opt2$f1)
 generar_submission(m2, test, opt2$threshold, TIPO, nombre_m2)
-imp <- importance(m2$finalModel)
 toc()
 
 # ============================================================
@@ -109,14 +107,13 @@ m3 <- train(
     splitrule     = "gini",
     min.node.size = c(1, 3, 5)
   ),
-  importance="permutation"
+  oob.eror = FALSE
 )
 
 opt3      <- optimizar_threshold(m3, train, train$pobre)
 nombre_m3 <- paste0("RF_mtry_", m3$bestTune$mtry)
 guardar_modelo(m3, nombre_m3, TIPO, dir_modelo, opt3$threshold, opt3$f1)
 generar_submission(m3, test, opt3$threshold, TIPO, nombre_m3)
-imp <- importance(m3$finalModel)
 toc()
 
 # ============================================================
@@ -139,7 +136,8 @@ m4 <- train(
                       floor(mtry_default * 2)),
     splitrule     = "extratrees",
     min.node.size = c(1, 3, 5, 10)
-    )
+    ),
+  oob.eror = FALSE
 )
 
 opt4      <- optimizar_threshold(m4, train, train$pobre)
@@ -167,7 +165,8 @@ m5 <- train(
                       floor(mtry_default / 2)),
     splitrule     = "extratrees",
     min.node.size = 5
-  )
+  ),
+  oob.eror = FALSE
 )
 
 opt5      <- optimizar_threshold(m5, train, train$pobre)
