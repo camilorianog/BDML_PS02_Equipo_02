@@ -27,7 +27,6 @@ ctrl <- trainControl(
 # ============================================================
 # MODELO 1 — CART default
 # ============================================================
-cat("\n>>> [cart - 1/3] CART default...\n")
 tic("CART default")
 set.seed(SEED)
 
@@ -48,7 +47,6 @@ toc()
 # ============================================================
 # MODELO 2 — CART grid cp fino
 # ============================================================
-cat("\n>>> [cart - 2/3] CART grid cp fino...\n")
 tic("CART grid cp fino")
 set.seed(SEED)
 
@@ -70,7 +68,6 @@ toc()
 # ============================================================
 # MODELO 3 — CART grid cp amplio
 # ============================================================
-cat("\n>>> [cart - 3/3] CART grid cp amplio...\n")
 tic("CART grid cp amplio")
 set.seed(SEED)
 
@@ -132,4 +129,4 @@ read.csv(here(paths$models, "log.csv")) |>
 # --- Limpiar entorno ----------------------------------------
 rm(list = ls(pattern = "^(m[0-9]+|opt[0-9]+|nombre)"))
 rm(ctrl, dir_modelo, TIPO)
-gc()
+gc()gc()
