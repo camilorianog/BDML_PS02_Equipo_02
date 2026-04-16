@@ -161,13 +161,13 @@ m5 <- train(
   method    = "ranger",
   trControl = ctrl,
   metric    = "AUC",
-  num.trees = 750,
+  num.trees = 500,
   tuneGrid  = expand.grid(
     mtry          = c(floor(mtry_default / 4),
                       floor(mtry_default / 2),
                       mtry_default),
     splitrule     = "extratrees",
-    min.node.size = 5
+    min.node.size = 10
   )
 )
 

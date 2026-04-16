@@ -8,3 +8,7 @@
 "04_Elastic_Net","EN_mix_lambda_1e-04",0.35,0.6741,NA
 "04_Elastic_Net","EN_full_AUC_lambda_1e-04_alpha_0.25",0.35,0.6739,NA
 "04_Elastic_Net","EN_full_F_lambda_1e-04_alpha_0.75",0.35,0.6741,NA
+"06_Random_Forest","RF_LowVar_3",0.35,0.7879,NA
+"06_Random_Forest","RF_LowVar_6",0.4,0.88,NA
+"07_Boosting","XGB_depth_3_eta_0.4",0.34,0.6926,NA
+"07_Boosting","XGB_depth_6_eta_0.1_rounds_300",0.33,0.6955,NA
