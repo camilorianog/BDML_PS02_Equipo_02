@@ -99,6 +99,7 @@ source(here("01_R", "02_functions", "02_generar_submission.R"))
 # PIPELINE
 # ============================================================
 
+
 tic("Pipeline completo")
 
 cat("\n")
@@ -109,21 +110,21 @@ cat("============================================================\n\n")
 
 # --- 1. Preparación de datos --------------------------------
 
-cat(">>> [1/4] Limpieza y preparación de datos...\n")
+cat(">>> Limpieza y preparación de datos...\n")
 tic("  Prep")
 source(here("01_R", "00_prep", "00_clean.R"))
 toc(log = TRUE)
 
 # --- 2. Feature engineering ---------------------------------
 
-cat("\n>>> [2/4] Feature engineering...\n")
+cat("\n>>> Feature engineering...\n")
 tic("  Features")
 source(here("01_R", "01_feat", "00_features.R"))
 toc(log = TRUE)
 
 # --- 3. Modelos de probabilidad -----------------------------
 
-cat("\n>>> [3/4] Entrenamiento de modelos...\n")
+cat("\n>>> Entrenamiento de modelos...\n")
 
 cat("  · Modelos de probabilidad\n")
 tic("  Modelos probabilidad")
@@ -150,7 +151,7 @@ toc(log = TRUE)
 
 # --- 4. Resumen final ---------------------------------------
 
-cat("\n>>> [4/4] Pipeline finalizado.\n\n")
+cat("\n>>> Pipeline finalizado.\n\n")
 cat("------------------------------------------------------------\n")
 cat("Tiempos por etapa:\n")
 tic.log(format = TRUE) |> unlist() |> cat(sep = "\n")
