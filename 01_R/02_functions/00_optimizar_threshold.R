@@ -1,19 +1,19 @@
-# ============================================================
-# 00_optimizar_threshold.R
-# Optimiza el threshold de clasificación para maximizar F1
-# ============================================================
-
-optimizar_threshold <- function(modelo, datos, target) {
+optimizar_threshold <- function(modelo, dados, target) {
   
-  if (modelo$method == "lm") {
-    probs      <- pmin(pmax(predict(modelo, datos), 0), 1)
+  if (inherits(modelo, "ranger")) {
+    probs      <- modelo$predictions[, "pobre"]
+    target_bin <- as.integer(target == "pobre")
+    
+  } else if (modelo$method == "lm") {
+    probs      <- pmin(pmax(predict(modelo, dados), 0), 1)
     target_bin <- as.integer(target == 1)
+    
   } else {
     probs      <- modelo$pred$pobre
     target_bin <- as.integer(modelo$pred$obs == "pobre")
   }
   
-  thresholds <- seq(0.2, 0.5, by = 0.01)
+  thresholds <- seq(0.25, 0.55, by = 0.005)
   
   f1_scores <- map_dbl(thresholds, function(t) {
     preds     <- as.integer(probs >= t)
