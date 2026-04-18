@@ -88,7 +88,7 @@ tic("RF grid completo")
 set.seed(SEED)
 
 grid_m2 <- expand.grid(
-  num.trees     = c(500, 1000),
+  num.trees     = 1000,
   mtry          = c(floor(mtry_default / 2),
                     mtry_default,
                     floor(mtry_default * 2)),
@@ -155,85 +155,4 @@ read.csv(here(paths$models, "log.csv")) |>
 # --- Limpiar entorno ----------------------------------------
 rm(list = ls(pattern = "^(m[0-9]+|opt[0-9]+|nombre|best|grid|results|fit)"))
 rm(dir_modelo, TIPO, p, mtry_default, train_ranger, best_from_grid)
-gc()
-
-opt3      <- optimizar_threshold(m3, train, train$pobre)
-nombre_m3 <- paste0("RF_mtry_", m3$bestTune$mtry)
-guardar_modelo(m3, nombre_m3, TIPO, dir_modelo, opt3$threshold, opt3$f1)
-generar_submission(m3, test, opt3$threshold, TIPO, nombre_m3)
-imp <- importance(m3$finalModel)
-toc()
-
-# ============================================================
-# MODELO 4 — RF Extra Trees
-# ============================================================
-cat("\n>>> [rf - 4/5] RF Extra Trees...\n")
-tic("RF Extra Trees")
-set.seed(SEED)
-
-m4 <- train(
-  pobre ~ .,
-  data      = train |> select(-id),
-  method    = "ranger",
-  trControl = ctrl,
-  metric    = "AUC",
-  num.trees = 500,
-  tuneGrid  = expand.grid(
-    mtry          = c(floor(mtry_default / 2),
-                      mtry_default,
-                      floor(mtry_default * 2)),
-    splitrule     = "extratrees",
-    min.node.size = c(1, 3, 5, 10)
-    )
-)
-
-opt4      <- optimizar_threshold(m4, train, train$pobre)
-nombre_m4 <- paste0("RF_extratrees_", m4$bestTune$mtry)
-guardar_modelo(m4, nombre_m4, TIPO, dir_modelo, opt4$threshold, opt4$f1)
-generar_submission(m4, test, opt4$threshold, TIPO, nombre_m4)
-toc()
-
-# ============================================================
-# MODELO 5 — RF Low Var
-# ============================================================
-cat("\n>>> [RF - 5/5] RF Low Var...\n")
-tic("RF Low Var")
-set.seed(SEED)
-
-m5 <- train(
-  pobre ~ .,
-  data      = train |> select(-id),
-  method    = "ranger",
-  trControl = ctrl,
-  metric    = "AUC",
-  num.trees = 500,
-  tuneGrid  = expand.grid(
-    mtry          = c(floor(mtry_default / 4),
-                      floor(mtry_default / 2),
-                      mtry_default),
-    splitrule     = "extratrees",
-    min.node.size = 10
-  )
-)
-
-opt5      <- optimizar_threshold(m5, train, train$pobre)
-nombre_m5 <- paste0("RF_LowVar_", m5$bestTune$mtry)
-guardar_modelo(m5, nombre_m5, TIPO, dir_modelo, opt5$threshold, opt5$f1)
-generar_submission(m5, test, opt5$threshold, TIPO, nombre_m5)
-toc()
-
-# ============================================================
-# RESUMEN
-# ============================================================
-cat("\n======================================================\n")
-cat("  Resumen Random Forest\n")
-cat("======================================================\n")
-read.csv(here(paths$models, "log.csv")) |>
-  filter(tipo == TIPO) |>
-  arrange(desc(cv_f1)) |>
-  print()
-
-# --- Limpiar entorno ----------------------------------------
-rm(list = ls(pattern = "^(m[0-9]+|opt[0-9]+|nombre)"))
-rm(ctrl, dir_modelo, TIPO, p, mtry_default)
 gc()
