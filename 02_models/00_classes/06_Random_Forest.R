@@ -1,10 +1,10 @@
 # ============================================================
-# 06_Random_Forest.R
-# Random Forest models
+# Random_Forest.R
+# Random Forest models — ranger directo
 # ============================================================
 
 TIPO       <- "06_Random_Forest"
-dir_modelo <- here(paths$submissions, TIPO)
+dir_modelo <- here(paths$models, TIPO)
 dir.create(dir_modelo, recursive = TRUE, showWarnings = FALSE)
 
 # --- Cargar datos -------------------------------------------
@@ -15,166 +15,130 @@ train <- train |>
   mutate(pobre = factor(pobre, levels = c(0, 1),
                         labels = c("no_pobre", "pobre")))
 
-# --- Control de entrenamiento -------------------------------
-ctrl <- trainControl(
-  method          = "cv",
-  number          = CV_FOLDS,
-  classProbs      = TRUE,
-  summaryFunction = prSummary,
-  savePredictions = "final"
-)
-
 # --- Parámetro base -----------------------------------------
-p            <- ncol(train) - 2  # descontar id y pobre
+p            <- ncol(train) - 2
 mtry_default <- floor(sqrt(p))
+
+# --- Helper: entrenar ranger + evaluar OOB F1 ---------------
+train_ranger <- function(grid_row, importance = "none") {
+  fit <- ranger(
+    pobre         ~ .,
+    data          = train |> select(-id),
+    num.trees     = grid_row$num.trees,
+    mtry          = grid_row$mtry,
+    splitrule     = grid_row$splitrule,
+    min.node.size = grid_row$min.node.size,
+    probability   = TRUE,
+    importance    = importance,
+    num.threads   = parallel::detectCores() - 1,
+    seed          = SEED
+  )
+  opt <- optimizar_threshold(fit, NULL, train$pobre)
+  cat(sprintf("    num.trees=%d | mtry=%d | node=%d | splitrule=%s | OOB F1=%.4f\n",
+              grid_row$num.trees, grid_row$mtry, grid_row$min.node.size,
+              grid_row$splitrule, opt$f1))
+  list(model = fit, opt = opt)
+}
+
+# --- Helper: seleccionar mejor modelo de grid ---------------
+best_from_grid <- function(results) {
+  f1s <- map_dbl(results, ~ .x$opt$f1)
+  results[[which.max(f1s)]]
+}
 
 # ============================================================
 # MODELO 1 — RF mtry default
 # ============================================================
-cat("\n>>> [rf - 1/5] Random Forest mtry default...\n")
+cat("\n>>> [rf - 1/3] Random Forest mtry default...\n")
 tic("RF mtry default")
 set.seed(SEED)
 
-m1 <- train(
-  pobre ~ .,
-  data      = train |> select(-id),
-  method    = "ranger",
-  trControl = ctrl,
-  metric    = "AUC",
-  num.trees = 500,
-  tuneGrid  = expand.grid(
-    mtry              = mtry_default,
-    splitrule         = "gini",
-    min.node.size     = 1
-  ), 
-  importance="permutation"
+m1 <- ranger(
+  pobre         ~ .,
+  data          = train |> select(-id),
+  num.trees     = 500,
+  mtry          = mtry_default,
+  splitrule     = "gini",
+  min.node.size = 1,
+  probability   = TRUE,
+  importance    = "permutation",
+  num.threads   = parallel::detectCores() - 1,
+  seed          = SEED
 )
 
-opt1      <- optimizar_threshold(m1, train, train$pobre)
-nombre_m1 <- paste0("RF_mtry_", m1$bestTune$mtry)
+imp_df <- data.frame(
+  variable   = names(m1$variable.importance),
+  importance = m1$variable.importance
+) |> arrange(desc(importance))
+
+print(imp_df)
+
+opt1      <- optimizar_threshold(m1, NULL, train$pobre)
+nombre_m1 <- paste0("RF_mtry_", mtry_default)
 guardar_modelo(m1, nombre_m1, TIPO, dir_modelo, opt1$threshold, opt1$f1)
 generar_submission(m1, test, opt1$threshold, TIPO, nombre_m1)
-imp <- importance(m1$finalModel)
+cat("    OOB Brier:", round(m1$prediction.error, 4), "\n")
 toc()
 
 # ============================================================
-# MODELO 2 — RF grid reducido
+# MODELO 2 — RF grid completo (mtry, node size, num.trees)
 # ============================================================
-cat("\n>>> [rf - 2/5] Random Forest grid reducido...\n")
-tic("RF grid reducido")
-set.seed(SEED)
-
-m2 <- train(
-  pobre ~ .,
-  data      = train |> select(-id),
-  method    = "ranger",
-  trControl = ctrl,
-  metric    = "AUC",
-  num.trees = 500,
-  tuneGrid  = expand.grid(
-    mtry          = c(floor(mtry_default / 2),
-                      floor(mtry_default * 1.5),
-                      floor(mtry_default * 2)),
-    splitrule     = "gini",
-    min.node.size = 1
-  ),
-  importance="permutation"
-)
-
-opt2      <- optimizar_threshold(m2, train, train$pobre)
-nombre_m2 <- paste0("RF_mtry_", m2$bestTune$mtry)
-guardar_modelo(m2, nombre_m2, TIPO, dir_modelo, opt2$threshold, opt2$f1)
-generar_submission(m2, test, opt2$threshold, TIPO, nombre_m2)
-imp <- importance(m2$finalModel)
-toc()
-
-# ============================================================
-# MODELO 3 — RF grid Completo (mtry y node size)
-# ============================================================
-cat("\n>>> [rf - 3/5] RF grid completo...\n")
+cat("\n>>> [rf - 2/3] RF grid completo...\n")
 tic("RF grid completo")
 set.seed(SEED)
 
-m3 <- train(
-  pobre ~ .,
-  data      = train |> select(-id),
-  method    = "ranger",
-  trControl = ctrl,
-  metric    = "AUC",
-  num.trees = 500,
-  tuneGrid  = expand.grid(
-    mtry          = c(floor(mtry_default / 2),
-                      mtry_default,
-                      floor(mtry_default * 2)),
-    splitrule     = "gini",
-    min.node.size = c(1, 3, 5)
-  ),
-  importance="permutation"
+grid_m2 <- expand.grid(
+  num.trees     = 1000,
+  mtry          = c(floor(mtry_default / 2),
+                    mtry_default,
+                    floor(mtry_default * 2)),
+  min.node.size = c(1, 3, 5, 10),
+  splitrule     = c("gini", "extratrees"),
+  stringsAsFactors = FALSE
 )
 
-opt3      <- optimizar_threshold(m3, train, train$pobre)
-nombre_m3 <- paste0("RF_mtry_", m3$bestTune$mtry)
-guardar_modelo(m3, nombre_m3, TIPO, dir_modelo, opt3$threshold, opt3$f1)
-generar_submission(m3, test, opt3$threshold, TIPO, nombre_m3)
-imp <- importance(m3$finalModel)
+results_m2 <- map(seq_len(nrow(grid_m2)), ~ train_ranger(grid_m2[.x, ]))
+best2      <- best_from_grid(results_m2)
+nombre_m2  <- paste0("RF_mtry_",  best2$model$mtry,
+                     "_node_",    best2$model$min.node.size,
+                     "_trees_",   best2$model$num.trees)
+guardar_modelo(best2$model, nombre_m2, TIPO, dir_modelo,
+               best2$opt$threshold, best2$opt$f1)
+generar_submission(best2$model, test, best2$opt$threshold, TIPO, nombre_m2)
 toc()
 
 # ============================================================
-# MODELO 4 — RF Extra Trees
+# MODELO 3 — RF Low Var
 # ============================================================
-cat("\n>>> [rf - 4/5] RF Extra Trees...\n")
-tic("RF Extra Trees")
-set.seed(SEED)
-
-m4 <- train(
-  pobre ~ .,
-  data      = train |> select(-id),
-  method    = "ranger",
-  trControl = ctrl,
-  metric    = "AUC",
-  num.trees = 500,
-  tuneGrid  = expand.grid(
-    mtry          = c(floor(mtry_default / 2),
-                      mtry_default,
-                      floor(mtry_default * 2)),
-    splitrule     = "extratrees",
-    min.node.size = c(1, 3, 5, 10)
-    )
-)
-
-opt4      <- optimizar_threshold(m4, train, train$pobre)
-nombre_m4 <- paste0("RF_extratrees_", m4$bestTune$mtry)
-guardar_modelo(m4, nombre_m4, TIPO, dir_modelo, opt4$threshold, opt4$f1)
-generar_submission(m4, test, opt4$threshold, TIPO, nombre_m4)
-toc()
-
-# ============================================================
-# MODELO 5 — RF Low Var
-# ============================================================
-cat("\n>>> [RF - 5/5] RF Low Var...\n")
+cat("\n>>> [rf - 3/3] RF Low Var...\n")
 tic("RF Low Var")
 set.seed(SEED)
 
-m5 <- train(
-  pobre ~ .,
-  data      = train |> select(-id),
-  method    = "ranger",
-  trControl = ctrl,
-  metric    = "AUC",
-  num.trees = 500,
-  tuneGrid  = expand.grid(
-    mtry          = c(floor(mtry_default / 4),
-                      floor(mtry_default / 2),
-                      mtry_default),
-    splitrule     = "extratrees",
-    min.node.size = 10
-  )
+m3 <- ranger(
+  pobre         ~ .,
+  data          = train |> select(-id),
+  num.trees     = 1000,
+  mtry          = mtry_default,
+  splitrule     = "extratrees",
+  min.node.size = 10,
+  probability   = TRUE,
+  importance    = "permutation",
+  num.threads   = parallel::detectCores() - 1,
+  seed          = SEED
 )
 
-opt5      <- optimizar_threshold(m5, train, train$pobre)
-nombre_m5 <- paste0("RF_LowVar_", m5$bestTune$mtry)
-guardar_modelo(m5, nombre_m5, TIPO, dir_modelo, opt5$threshold, opt5$f1)
-generar_submission(m5, test, opt5$threshold, TIPO, nombre_m5)
+imp_df <- data.frame(
+  variable   = names(m3$variable.importance),
+  importance = m3$variable.importance
+) |> arrange(desc(importance))
+
+print(imp_df)
+
+opt3      <- optimizar_threshold(m3, NULL, train$pobre)
+nombre_m3 <- paste0("RF_Low_Var")
+guardar_modelo(m3, nombre_m3, TIPO, dir_modelo, opt3$threshold, opt3$f1)
+generar_submission(m3, test, opt3$threshold, TIPO, nombre_m3)
+cat("    OOB Brier:", round(m3$prediction.error, 4), "\n")
 toc()
 
 # ============================================================
@@ -184,11 +148,11 @@ cat("\n======================================================\n")
 cat("  Resumen Random Forest\n")
 cat("======================================================\n")
 read.csv(here(paths$models, "log.csv")) |>
-  filter(tipo == TIPO) |>
+  dplyr::filter(tipo == TIPO) |>
   arrange(desc(cv_f1)) |>
   print()
 
 # --- Limpiar entorno ----------------------------------------
-rm(list = ls(pattern = "^(m[0-9]+|opt[0-9]+|nombre)"))
-rm(ctrl, dir_modelo, TIPO, p, mtry_default)
+rm(list = ls(pattern = "^(m[0-9]+|opt[0-9]+|nombre|best|grid|results|fit)"))
+rm(dir_modelo, TIPO, p, mtry_default, train_ranger, best_from_grid)
 gc()
