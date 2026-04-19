@@ -18,6 +18,7 @@ pacman::p_load(
   tidyverse,
   janitor,
   skimr,
+  dplyr,
   
   # Modelado
   caret,
