@@ -27,6 +27,7 @@ pacman::p_load(
   xgboost,
   lightgbm,
   bonsai,
+  themis,
   
   # Utilidades
   yardstick,

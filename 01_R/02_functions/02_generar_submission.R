@@ -16,14 +16,22 @@ generar_submission <- function(modelo, test, threshold, tipo, nombre = NULL) {
   }
   
   probs <- tryCatch(
-    predict(modelo, test, type = "prob")[, "pobre"],
+    if ("ranger" %in% class(modelo)) {
+      predict(modelo, test)$predictions[, "pobre"]
+    } else {
+      predict(modelo, test, type = "prob")[, "pobre"]
+    },
     error = function(e) {
       tryCatch(
         predict(modelo, test, type = "prob")[, "1"],
         error = function(e2) {
           warning("No se pudo obtener probabilidades para '",
                   modelo$method, "'. Usando predicción de clase directa.")
-          pmin(pmax(predict(modelo, test), 0), 1)
+          if ("ranger" %in% class(modelo)) {
+            as.numeric(predict(modelo, test)$predictions[, "pobre"])
+          } else {
+            as.numeric(predict(modelo, test))
+          }
         }
       )
     }

@@ -8,3 +8,10 @@
 "04_Elastic_Net","EN_mix_lambda_1e-04",0.35,0.6741,NA
 "04_Elastic_Net","EN_full_AUC_lambda_1e-04_alpha_0.25",0.35,0.6739,NA
 "04_Elastic_Net","EN_full_F_lambda_1e-04_alpha_0.75",0.35,0.6741,NA
+"Random_Forest","RF_low_var",0.34,0.6706,NA
+"Random_Forest","RF_low_var_mtry_6_node_10_gini",0.36,0.678,NA
+"Random_Forest","RF_Low_Var",0.36,0.675,NA
+"Random_Forest","RF_mtry_6",0.35,0.6747,NA
+"06_Random_Forest","RF_mtry_6",0.35,0.6747,NA
+"06_Random_Forest","RF_mtry_12_node_10_trees_1000",0.36,0.6787,NA
+"06_Random_Forest","RF_Low_Var",0.36,0.675,NA
