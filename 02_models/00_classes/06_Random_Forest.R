@@ -91,9 +91,10 @@ grid_m2 <- expand.grid(
   num.trees     = 1000,
   mtry          = c(floor(mtry_default / 2),
                     mtry_default,
+                    floor(mtry_default * 1.5),
                     floor(mtry_default * 2)),
-  min.node.size = c(1, 3, 5, 10),
-  splitrule     = c("gini", "extratrees"),
+  min.node.size = c(1, 5, 10),
+  splitrule     = c("gini", "Hellinger"),
   stringsAsFactors = FALSE
 )
 
@@ -118,8 +119,8 @@ m3 <- ranger(
   pobre         ~ .,
   data          = train |> select(-id),
   num.trees     = 1000,
-  mtry          = mtry_default,
-  splitrule     = "extratrees",
+  mtry          = mtry_default*2,
+  splitrule     = "hellinger",
   min.node.size = 10,
   probability   = TRUE,
   importance    = "permutation",
