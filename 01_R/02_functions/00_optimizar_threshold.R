@@ -13,7 +13,7 @@ optimizar_threshold <- function(modelo, dados, target) {
     target_bin <- as.integer(modelo$pred$obs == "pobre")
   }
   
-  thresholds <- seq(0.25, 0.55, by = 0.01)
+  thresholds <- seq(0.25, 0.55, by = 0.005)
   
   f1_scores <- map_dbl(thresholds, function(t) {
     preds     <- as.integer(probs >= t)
