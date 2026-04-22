@@ -89,12 +89,12 @@ set.seed(SEED)
 
 grid_m2 <- expand.grid(
   num.trees     = 1000,
-  mtry          = c(floor(mtry_default / 2),
+  mtry          = c(#floor(mtry_default / 2),
                     mtry_default,
-                    floor(mtry_default * 1.5),
+                    #floor(mtry_default * 1.5),
                     floor(mtry_default * 2)),
   min.node.size = c(1, 5, 10),
-  splitrule     = c("gini", "Hellinger"),
+  splitrule     = c("gini", "hellinger"),
   stringsAsFactors = FALSE
 )
 
