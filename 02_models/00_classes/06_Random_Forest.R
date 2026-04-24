@@ -95,7 +95,7 @@ grid_m2 <- expand.grid(
                     floor(mtry_default * 2),
                     p),
   min.node.size = c(1, 5, 10),
-  splitrule     = c("hellinger", "extratrees"),
+  splitrule     = c("gini","hellinger", "extratrees"),
   stringsAsFactors = FALSE
 )
 
