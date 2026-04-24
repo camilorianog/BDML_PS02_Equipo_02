@@ -49,14 +49,14 @@ best_from_grid <- function(results) {
 # ============================================================
 # MODELO 1 — RF mtry default
 # ============================================================
-cat("\n>>> [rf - 1/3] Random Forest mtry default...\n")
+cat("\n>>> [rf - 1/4] Random Forest mtry default...\n")
 tic("RF mtry default")
 set.seed(SEED)
 
 m1 <- ranger(
   pobre         ~ .,
   data          = train |> select(-id),
-  num.trees     = 500,
+  num.trees     = 1000,
   mtry          = mtry_default,
   splitrule     = "gini",
   min.node.size = 1,
@@ -81,26 +81,28 @@ cat("    OOB Brier:", round(m1$prediction.error, 4), "\n")
 toc()
 
 # ============================================================
-# MODELO 2 — RF grid completo (mtry, node size, num.trees)
+# MODELO 2 — RF grid completo (mtry, node size, splitrule)
 # ============================================================
-cat("\n>>> [rf - 2/3] RF grid completo...\n")
+cat("\n>>> [rf - 2/4] RF grid completo...\n")
 tic("RF grid completo")
 set.seed(SEED)
 
 grid_m2 <- expand.grid(
   num.trees     = 1000,
-  mtry          = c(floor(mtry_default / 2),
+  mtry          = c(#floor(mtry_default / 2),
                     mtry_default,
                     floor(mtry_default * 1.5),
-                    floor(mtry_default * 2)),
+                    floor(mtry_default * 2),
+                    p),
   min.node.size = c(1, 5, 10),
-  splitrule     = c("gini", "Hellinger"),
+  splitrule     = c("hellinger", "extratrees"),
   stringsAsFactors = FALSE
 )
 
 results_m2 <- map(seq_len(nrow(grid_m2)), ~ train_ranger(grid_m2[.x, ]))
 best2      <- best_from_grid(results_m2)
-nombre_m2  <- paste0("RF_mtry_",  best2$model$mtry,
+nombre_m2  <- paste0("RF_",       best2$model$splitrule,
+                     "_mtry_",    best2$model$mtry,
                      "_node_",    best2$model$min.node.size,
                      "_trees_",   best2$model$num.trees)
 guardar_modelo(best2$model, nombre_m2, TIPO, dir_modelo,
@@ -111,7 +113,7 @@ toc()
 # ============================================================
 # MODELO 3 — RF Low Var
 # ============================================================
-cat("\n>>> [rf - 3/3] RF Low Var...\n")
+cat("\n>>> [rf - 3/4] RF Low Var...\n")
 tic("RF Low Var")
 set.seed(SEED)
 
@@ -119,8 +121,8 @@ m3 <- ranger(
   pobre         ~ .,
   data          = train |> select(-id),
   num.trees     = 1000,
-  mtry          = mtry_default*2,
-  splitrule     = "hellinger",
+  mtry          = mtry_default,
+  splitrule     = "extratrees",
   min.node.size = 10,
   probability   = TRUE,
   importance    = "permutation",
@@ -141,6 +143,41 @@ guardar_modelo(m3, nombre_m3, TIPO, dir_modelo, opt3$threshold, opt3$f1)
 generar_submission(m3, test, opt3$threshold, TIPO, nombre_m3)
 cat("    OOB Brier:", round(m3$prediction.error, 4), "\n")
 toc()
+
+# ============================================================
+# MODELO 4 — RF Hellinger+Bagging
+# ============================================================
+cat("\n>>> [rf - 3/3] RF Hellinger+Bagging...\n")
+tic("RF Hellinger+Bagging")
+set.seed(SEED)
+
+m4 <- ranger(
+  pobre         ~ .,
+  data          = train |> select(-id),
+  num.trees     = 1000,
+  mtry          = p,
+  splitrule     = "hellinger",
+  min.node.size = 10,
+  probability   = TRUE,
+  #importance    = "permutation",
+  num.threads   = parallel::detectCores() - 1,
+  seed          = SEED
+)
+
+#imp_df <- data.frame(
+ # variable   = names(m4$variable.importance),
+#  importance = m4$variable.importance
+#) |> arrange(desc(importance))
+
+#print(imp_df)
+
+opt4      <- optimizar_threshold(m4, NULL, train$pobre)
+nombre_m4 <- paste0("RF_HD_Bagging")
+guardar_modelo(m4, nombre_m4, TIPO, dir_modelo, opt4$threshold, opt4$f1)
+generar_submission(m4, test, opt4$threshold, TIPO, nombre_m4)
+cat("    OOB Brier:", round(m4$prediction.error, 4), "\n")
+toc()
+
 
 # ============================================================
 # RESUMEN
