@@ -1,62 +1,76 @@
 # ============================================================
 # 00_rundirectory.R
 # Modelos de Clasificación — configuración + pipeline
-# Equipo 02 | MECA 4107 | Universidad de los Andes | 2026-10
+# ============================================================
+#
+# MECA 4107 — Big Data y Machine Learning para Economía Aplicada
+# Universidad de los Andes | 2026-10
+#
+# Equipo 02:
+#   · Jose A. Rincón S.    — 202013328
+#   · Juan C. Riaño        — 202013305
+#   · Lucas Rodriguez      — 202021985
+#   · Santiago González    — 202110234
+#
+# Descripción:
+#   Script maestro del pipeline de predicción de pobreza.
+#   Corre en orden: limpieza → features → EDA → modelos.
+#   Fuente: DANE MESE 2018, Bogotá.
+#   Métrica objetivo: F1-score (CV 5 folds).
 # ============================================================
 
-# --- Gestión de paquetes ------------------------------------
+cat("\n")
+cat("╔══════════════════════════════════════════════════════════╗\n")
+cat("║   MECA 4107 · Problem Set 02 · Equipo 02                ║\n")
+cat("║   Predicción de Pobreza — DANE MESE 2018, Bogotá        ║\n")
+cat("║                                                          ║\n")
+cat("║   Jose A. Rincón S.  ·  Juan C. Riaño                   ║\n")
+cat("║   Lucas Rodriguez    ·  Integrante 4                     ║\n")
+cat("╚══════════════════════════════════════════════════════════╝\n")
+cat(sprintf("  Inicio: %s\n\n", format(Sys.time(), "%Y-%m-%d %H:%M:%S")))
+
+# ============================================================
+# PAQUETES
+# ============================================================
 
 if (!require("pacman", quietly = TRUE)) install.packages("pacman")
 
 pacman::p_load(
   # Entorno
-  here,
-  tictoc,
-  jsonlite,
-  httr,
-  reticulate,
+  here, tictoc, jsonlite, httr, reticulate,
   
   # Manipulación de datos
-  tidyverse,
-  janitor,
-  skimr,
-  dplyr,
+  tidyverse, janitor, skimr, patchwork, gt,
   
   # Modelado
-  caret,
-  glmnet,
-  naivebayes,
-  ranger,
-  xgboost,
-  lightgbm,
-  bonsai,
+  caret, glmnet, naivebayes, ranger, xgboost, lightgbm, bonsai,
   
   # Métricas
-  yardstick,
-  MLmetrics,
+  yardstick, MLmetrics,
   
   # Visualización
   ggplot2
 )
 
-# --- Semilla ------------------------------------------------
+# ============================================================
+# PARÁMETROS GLOBALES
+# ============================================================
 
-SEED <- 202601
-set.seed(SEED)
-
-# --- Parámetros globales de CV ------------------------------
-
+SEED      <- 202601
 CV_FOLDS  <- 5
 CV_METRIC <- "F1"
 
-# --- Grid elastic net ---------------------------------------
+set.seed(SEED)
 
+# Grid Elastic Net
 EN_GRID <- expand.grid(
   alpha  = seq(0.1, 0.9, by = 0.01),
   lambda = 10^seq(-4, 1, length = 20)
 )
 
-# --- Rutas --------------------------------------------------
+# ============================================================
+# RUTAS
+# ============================================================
 
 paths <- list(
   root        = here::here(),
@@ -68,29 +82,23 @@ paths <- list(
   reduced     = here("01_R",    "03_reduced"),
   models      = here("02_models"),
   classes     = here("02_models", "00_classes"),
-  submissions = here("02_models", "01_submissions")
+  submissions = here("02_models", "01_submissions"),
+  figures     = here("04_outputs", "figures"),
+  tables      = here("04_outputs", "tables")
 )
-
-# --- Crear estructura de carpetas ---------------------------
 
 invisible(lapply(paths, dir.create, recursive = TRUE, showWarnings = FALSE))
 
-model_dirs <- c(
-  "01_Base_models",
-  "02_LPM",
-  "03_Logit",
-  "04_Elastic_Net",
-  "05_CART",
-  "06_Random_Forest",
-  "07_Boosting",
-  "08_Naive_Bayes"
-)
+invisible(lapply(
+  c("01_Base_models", "02_LPM", "03_Logit", "04_Elastic_Net",
+    "05_CART", "06_Random_Forest", "07_Boosting", "08_Naive_Bayes"),
+  function(d) dir.create(file.path(paths$submissions, d),
+                         recursive = TRUE, showWarnings = FALSE)
+))
 
-invisible(lapply(model_dirs, function(d) {
-  dir.create(file.path(paths$submissions, d), recursive = TRUE, showWarnings = FALSE)
-}))
-
-# --- Cargar funciones auxiliares ----------------------------
+# ============================================================
+# FUNCIONES AUXILIARES
+# ============================================================
 
 source(here("01_R", "02_functions", "00_optimizar_threshold.R"))
 source(here("01_R", "02_functions", "01_guardar_modelo.R"))
@@ -100,62 +108,67 @@ source(here("01_R", "02_functions", "02_generar_submission.R"))
 # PIPELINE
 # ============================================================
 
-
 tic("Pipeline completo")
 
-cat("\n")
-cat("============================================================\n")
-cat("  MECA 4107 | Problem Set 02 | Equipo 02\n")
-cat("  Iniciando pipeline —", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
-cat("============================================================\n\n")
-
-# --- 1. Preparación de datos --------------------------------
-
-cat(">>> Limpieza y preparación de datos...\n")
-tic("  Prep")
+# --- [1] Limpieza y preparación -----------------------------
+cat("─────────────────────────────────────────────────────────\n")
+cat("  [1/5] Limpieza y preparación de datos\n")
+cat("─────────────────────────────────────────────────────────\n")
+tic("Limpieza")
 source(here("01_R", "00_prep", "00_clean.R"))
 toc(log = TRUE)
 
-# --- 2. Feature engineering ---------------------------------
-
-cat("\n>>> Feature engineering...\n")
-tic("  Features")
+# --- [2] Feature engineering --------------------------------
+cat("\n─────────────────────────────────────────────────────────\n")
+cat("  [2/5] Feature engineering\n")
+cat("─────────────────────────────────────────────────────────\n")
+tic("Features")
 source(here("01_R", "01_feat", "00_features.R"))
 toc(log = TRUE)
 
-# --- 3. Modelos de probabilidad -----------------------------
+# --- [3] EDA ------------------------------------------------
+cat("\n─────────────────────────────────────────────────────────\n")
+cat("  [3/5] Análisis exploratorio (EDA)\n")
+cat("─────────────────────────────────────────────────────────\n")
+tic("EDA")
+source(here("01_R", "00_prep", "01_eda.R"))
+toc(log = TRUE)
 
-cat("\n>>> Entrenamiento de modelos...\n")
-
-cat("  · Modelos de probabilidad\n")
-tic("  Modelos probabilidad")
+# --- [4] Modelos de probabilidad ----------------------------
+cat("\n─────────────────────────────────────────────────────────\n")
+cat("  [4/5] Modelos de probabilidad\n")
+cat("─────────────────────────────────────────────────────────\n")
+tic("Modelos probabilidad")
 source(here("02_models", "00_classes", "01_Base_models.R"))
 source(here("02_models", "00_classes", "02_LPM.R"))
 source(here("02_models", "00_classes", "03_Logit.R"))
 source(here("02_models", "00_classes", "04_Elastic_Net.R"))
 toc(log = TRUE)
 
-# --- 3.a Base reducida para contraste -----------------------
-
+# Base reducida para modelos de árbol
 cat("  · Reducción de variables\n")
 source(here("01_R", "03_reduced", "00_reduction.R"))
 
-# --- 3.b Modelos basados en árboles -------------------------
-
-cat("  · Modelos basados en árboles\n")
-tic("  Modelos árboles")
+# --- [5] Modelos basados en árboles -------------------------
+cat("\n─────────────────────────────────────────────────────────\n")
+cat("  [5/5] Modelos basados en árboles\n")
+cat("─────────────────────────────────────────────────────────\n")
+tic("Modelos árboles")
 source(here("02_models", "00_classes", "05_CART.R"))
 source(here("02_models", "00_classes", "06_Random_Forest.R"))
 source(here("02_models", "00_classes", "07_Boosting.R"))
 source(here("02_models", "00_classes", "08_Naive_Bayes.R"))
 toc(log = TRUE)
 
-# --- 4. Resumen final ---------------------------------------
+# ============================================================
+# RESUMEN FINAL
+# ============================================================
 
-cat("\n>>> Pipeline finalizado.\n\n")
-cat("------------------------------------------------------------\n")
-cat("Tiempos por etapa:\n")
+cat("\n╔══════════════════════════════════════════════════════════╗\n")
+cat("║   Pipeline completado                                    ║\n")
+cat("╚══════════════════════════════════════════════════════════╝\n")
+cat("  Tiempos por etapa:\n")
 tic.log(format = TRUE) |> unlist() |> cat(sep = "\n")
-cat("------------------------------------------------------------\n")
-toc() # Pipeline completo
 cat("\n")
+toc()
+cat(sprintf("\n  Fin: %s\n\n", format(Sys.time(), "%Y-%m-%d %H:%M:%S")))
