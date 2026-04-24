@@ -179,4 +179,4 @@ cat("    [17] ratio_mayores_65\n")
 cat("    [18] jefe_mayor_inactivo\n")
 cat("    [19] subempleo_informal\n")
 cat("    [20] estabilidad_formal\n")
-cat("    [Fix] nper → n_personas, p5000 → cuartos_hogar (nombres post-clean)\n"
+cat("    [Fix] nper → n_personas, p5000 → cuartos_hogar (nombres post-clean)\n")
