@@ -1,25 +1,58 @@
 # ============================================================
 # 00_deck1_metrics.R
 # Métricas y figuras para deck 1 (deep-dive del mejor modelo)
-# Selección interactiva del modelo desde log.csv.
+# ============================================================
+# Selección: define FILA_MODELO abajo y corre el script.
 # Outputs:
 #   04_outputs/tables/deck1_*.csv
 #   04_outputs/figures/deck1_*.png
 #
-# Pre-requisitos: ejecutar antes 00_rundirectory.R (al menos la
-# sección que define `paths`, `SEED` y carga paquetes), o
-# correr este script desde un entorno donde esos objetos existan.
+# Pre-requisitos: correr primero 00_rundirectory.R
 # ============================================================
 
-if (is.na(fila_sel) || fila_sel < 1 || fila_sel > nrow(log_modelos)) {
-  stop("Fila inválida. Ingresa un número entre 1 y ", nrow(log_modelos), ".")
+if (!exists("paths")) {
+  stop("paths no está definido. Corre primero 00_rundirectory.R.")
 }
-modelo_sel <- log_modelos[fila_sel, ]
 
+pacman::p_load(here, tidyverse, yardstick, scales, caret, ranger, xgboost)
+
+# ------------------------------------------------------------
+# 1. SELECCIÓN DEL MODELO
+# ------------------------------------------------------------
+
+ruta_log <- here(paths$models, "log.csv")
+if (!file.exists(ruta_log)) stop("No existe ", ruta_log)
+
+log_modelos <- read.csv(ruta_log, stringsAsFactors = FALSE) |>
+  mutate(
+    cv_f1     = suppressWarnings(as.numeric(cv_f1)),
+    kaggle_f1 = suppressWarnings(as.numeric(kaggle_f1)),
+    threshold = suppressWarnings(as.numeric(threshold))
+  )
+
+cat("\n================================================\n")
+cat("  Modelos disponibles en log.csv\n")
+cat("================================================\n")
+print(log_modelos |>
+        tibble::rownames_to_column("fila") |>
+        select(fila, any_of(c("tipo", "nombre", "cv_f1", "kaggle_f1", "threshold"))),
+      row.names = FALSE)
+
+# ────────────────────────────────────────────────────────────
+FILA_MODELO <- 20
+# ────────────────────────────────────────────────────────────
+
+if (is.na(FILA_MODELO) || FILA_MODELO < 1 || FILA_MODELO > nrow(log_modelos)) {
+  stop("Fila inválida. Elige entre 1 y ", nrow(log_modelos),
+       ".\nPuedes también asignar manualmente: FILA_MODELO <- X")
+}
+
+modelo_sel <- log_modelos[FILA_MODELO, ]
 cat("\n  Modelo seleccionado:\n")
 print(modelo_sel)
 
-ruta_rds <- here(paths$submissions, modelo_sel$tipo, paste0(modelo_sel$nombre, ".rds"))
+ruta_rds <- here(paths$submissions, modelo_sel$tipo,
+                 paste0(modelo_sel$nombre, ".rds"))
 if (!file.exists(ruta_rds)) {
   stop("No se encontró el .rds del modelo en: ", ruta_rds)
 }
@@ -37,30 +70,31 @@ test  <- readRDS(here(paths$processed, "test_features.rds"))
 # ------------------------------------------------------------
 
 extract_pred <- function(modelo, train, ruta_preds = NULL) {
-  # XGBoost (xgb.Booster): lee OOF preds guardadas en _train_preds.rds
+
+  # XGBoost nativo
   if (inherits(modelo, "xgb.Booster")) {
     if (is.null(ruta_preds) || !file.exists(ruta_preds)) {
-      stop("XGBoost requiere el archivo _train_preds.rds. ",
-           "Ruta esperada: ", ruta_preds)
+      stop("XGBoost requiere _train_preds.rds. Ruta esperada: ", ruta_preds)
     }
-    probs <- as.numeric(readRDS(ruta_preds))
     return(list(
-      probs  = probs,
-      obs    = as.integer(train$pobre == 1),
+      probs  = as.numeric(readRDS(ruta_preds)),
+      obs    = as.integer(train$pobre == 1 | train$pobre == "pobre"),
       fold   = NA_character_,
-      source = "In-sample (XGBoost)"
+      source = "OOF k-fold (XGBoost)"
     ))
   }
-  # Random Forest (ranger directo): OOB
+
+  # Random Forest (ranger)
   if (inherits(modelo, "ranger")) {
     return(list(
       probs  = as.numeric(modelo$predictions[, "pobre"]),
-      obs    = as.integer(train$pobre == 1),
+      obs    = as.integer(train$pobre == 1 | train$pobre == "pobre"),
       fold   = NA_character_,
       source = "OOB (ranger)"
     ))
   }
-  # LPM (lm): in-sample (no hay clase para predecir prob)
+
+  # LPM
   if (!is.null(modelo$method) && modelo$method == "lm") {
     yhat <- pmin(pmax(predict(modelo, train), 0), 1)
     return(list(
@@ -70,11 +104,12 @@ extract_pred <- function(modelo, train, ruta_preds = NULL) {
       source = "In-sample (LPM)"
     ))
   }
-  # caret default: usa $pred filtrado por bestTune
+
+  # caret genérico
   bt   <- modelo$bestTune
   pred <- modelo$pred
   if (is.null(pred)) {
-    stop("modelo$pred está vacío — entrena con savePredictions = 'final'")
+    stop("modelo$pred vacío — entrena con savePredictions = 'final'")
   }
   if (!is.null(bt) && nrow(bt) > 0) {
     for (col in names(bt)) {
@@ -95,6 +130,7 @@ P         <- extract_pred(modelo, train, ruta_preds)
 threshold <- as.numeric(modelo_sel$threshold)
 
 cat(sprintf("\n  Source predicciones: %s\n", P$source))
+cat(sprintf("  N observaciones:     %d\n", length(P$probs)))
 cat(sprintf("  Threshold:           %.4f\n", threshold))
 
 # ------------------------------------------------------------
@@ -114,7 +150,6 @@ f1_at <- function(p, y, t) {
        tp = tp, fp = fp, fn = fn, tn = tn)
 }
 
-# Yardstick necesita factor con event_level segundo
 df_yard <- tibble(probs = P$probs,
                   obs   = factor(P$obs, levels = c(0, 1)))
 
@@ -137,10 +172,8 @@ tabla_metricas <- tibble(
               (m_at$tp + m_at$tn) / length(P$probs),
               threshold, mean(P$obs))
 ) |> mutate(valor = round(valor, 4))
-
 write.csv(tabla_metricas,
-          here(paths$tables, "deck1_metricas_globales.csv"),
-          row.names = FALSE)
+          here(paths$tables, "deck1_metricas_globales.csv"), row.names = FALSE)
 
 # 5.2 Confusion matrix
 cm <- tibble(
@@ -148,19 +181,15 @@ cm <- tibble(
   pred = c("Pobre",    "No pobre", "Pobre",    "No pobre"),
   n    = c(m_at$tp,    m_at$fn,    m_at$fp,    m_at$tn)
 ) |> mutate(pct = round(n / sum(n) * 100, 2))
-
-write.csv(cm, here(paths$tables, "deck1_confusion_matrix.csv"),
-          row.names = FALSE)
+write.csv(cm, here(paths$tables, "deck1_confusion_matrix.csv"), row.names = FALSE)
 
 # 5.3 Sweep de threshold
 ts    <- seq(0.05, 0.95, by = 0.005)
 sweep <- map_dfr(ts, function(t) {
   m <- f1_at(P$probs, P$obs, t)
-  tibble(threshold = t, precision = m$precision,
-         recall = m$recall, f1 = m$f1)
+  tibble(threshold = t, precision = m$precision, recall = m$recall, f1 = m$f1)
 })
-write.csv(sweep, here(paths$tables, "deck1_sweep_threshold.csv"),
-          row.names = FALSE)
+write.csv(sweep, here(paths$tables, "deck1_sweep_threshold.csv"), row.names = FALSE)
 
 # 5.4 F1 por fold (si hubo CV)
 f1_folds <- NULL
@@ -171,50 +200,47 @@ if (!any(is.na(P$fold))) {
       m <- f1_at(.x$probs, .x$obs, threshold)
       tibble(precision = m$precision, recall = m$recall, f1 = m$f1, n = nrow(.x))
     }) |> ungroup()
-  write.csv(f1_folds, here(paths$tables, "deck1_f1_por_fold.csv"),
-            row.names = FALSE)
+  write.csv(f1_folds, here(paths$tables, "deck1_f1_por_fold.csv"), row.names = FALSE)
 }
 
-# 5.5 Calibration (deciles)
+# 5.5 Calibración (deciles)
 calib <- tibble(probs = P$probs, obs = P$obs) |>
   mutate(decil = ntile(probs, 10)) |>
   group_by(decil) |>
-  summarise(prob_media = mean(probs),
-            tasa_obs   = mean(obs),
-            n          = n(),
-            .groups    = "drop")
-write.csv(calib, here(paths$tables, "deck1_calibration.csv"),
-          row.names = FALSE)
+  summarise(prob_media = mean(probs), tasa_obs = mean(obs),
+            n = n(), .groups = "drop")
+write.csv(calib, here(paths$tables, "deck1_calibration.csv"), row.names = FALSE)
 
-# 5.6 Variable importance (si aplica)
+# 5.6 Variable importance
 varimp <- NULL
-if (inherits(modelo, "ranger") && !is.null(modelo$variable.importance) &&
-    length(modelo$variable.importance) > 0) {
+if (inherits(modelo, "xgb.Booster")) {
+  vi <- xgb.importance(model = modelo)
+  if (!is.null(vi) && nrow(vi) > 0) {
+    varimp <- tibble(variable = vi$Feature, importance = vi$Gain)
+  }
+} else if (inherits(modelo, "ranger") &&
+           length(modelo$variable.importance) > 0) {
   varimp <- tibble(variable   = names(modelo$variable.importance),
                    importance = as.numeric(modelo$variable.importance))
 } else if (!is.null(modelo$method) && modelo$method != "lm") {
   vi <- tryCatch(caret::varImp(modelo)$importance, error = function(e) NULL)
   if (!is.null(vi)) {
-    varimp <- tibble(variable = rownames(vi),
-                     importance = vi[[1]])
+    varimp <- tibble(variable = rownames(vi), importance = vi[[1]])
   }
 }
 if (!is.null(varimp)) {
   varimp <- varimp |> arrange(desc(importance))
-  write.csv(varimp, here(paths$tables, "deck1_var_importance.csv"),
-            row.names = FALSE)
+  write.csv(varimp, here(paths$tables, "deck1_var_importance.csv"), row.names = FALSE)
 }
 
-# 5.7 Comparación CV vs Kaggle (gap de overfitting)
+# 5.7 CV vs Kaggle
 gap_tbl <- tibble(
-  metrica   = c("CV F1", "Kaggle F1", "Gap (CV - Kaggle)"),
-  valor     = c(modelo_sel$cv_f1,
-                modelo_sel$kaggle_f1,
-                if (is.na(modelo_sel$kaggle_f1)) NA_real_
-                else modelo_sel$cv_f1 - modelo_sel$kaggle_f1)
+  metrica = c("CV F1", "Kaggle F1", "Gap (CV - Kaggle)"),
+  valor   = c(modelo_sel$cv_f1, modelo_sel$kaggle_f1,
+              if (is.na(modelo_sel$kaggle_f1)) NA_real_
+              else modelo_sel$cv_f1 - modelo_sel$kaggle_f1)
 ) |> mutate(valor = round(valor, 4))
-write.csv(gap_tbl, here(paths$tables, "deck1_cv_vs_kaggle.csv"),
-          row.names = FALSE)
+write.csv(gap_tbl, here(paths$tables, "deck1_cv_vs_kaggle.csv"), row.names = FALSE)
 
 # ------------------------------------------------------------
 # 6. FIGURAS
@@ -224,7 +250,7 @@ tema <- theme_minimal(base_size = 12) +
   theme(plot.title    = element_text(face = "bold", size = 14, color = "#0A2240"),
         plot.subtitle = element_text(size = 11, color = "#555"),
         plot.caption  = element_text(size = 9, color = "#888", hjust = 0),
-        legend.position = "bottom",
+        legend.position  = "bottom",
         panel.grid.minor = element_blank())
 
 guardar_fig <- function(p, nombre, w = 9, h = 6) {
@@ -247,14 +273,13 @@ p_pr <- df_pr |>
   scale_x_continuous(limits = c(0, 1)) +
   scale_y_continuous(limits = c(0, 1)) +
   labs(title    = "Curva Precision-Recall",
-       subtitle = sprintf("AUC-PR = %.3f (relevante con desbalance ~%.0f/%.0f)",
+       subtitle = sprintf("AUC-PR = %.3f (desbalance ~%.0f%% No pobre / %.0f%% Pobre)",
                           auc_pr, (1 - mean(P$obs)) * 100, mean(P$obs) * 100),
-       x = "Recall", y = "Precision",
-       caption = caption_modelo) +
+       x = "Recall", y = "Precision", caption = caption_modelo) +
   tema
 guardar_fig(p_pr, "deck1_01_pr_curve")
 
-# 6.2 ROC curve (complementaria)
+# 6.2 ROC curve
 p_roc <- df_roc |>
   ggplot(aes(1 - specificity, sensitivity)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray50") +
@@ -286,7 +311,7 @@ p_sweep <- sweep |>
                                 F1        = "#B71C1C")) +
   scale_y_continuous(limits = c(0, 1)) +
   labs(title    = "Precision, Recall y F1 vs threshold",
-       subtitle = sprintf("F1 máximo en t* = %.3f (vs default 0.5)", threshold),
+       subtitle = sprintf("F1 en t* = %.3f (vs default 0.5)", threshold),
        x = "Threshold", y = "Score", color = NULL,
        caption = caption_modelo) +
   tema
@@ -299,17 +324,16 @@ p_dist <- tibble(probs = P$probs,
   ggplot(aes(probs, fill = clase)) +
   geom_density(alpha = 0.5, color = NA) +
   geom_vline(xintercept = threshold, linetype = "dashed") +
-  scale_fill_manual(values = c("No pobre" = "#1565C0",
-                               "Pobre"    = "#B71C1C")) +
+  scale_fill_manual(values = c("No pobre" = "#1565C0", "Pobre" = "#B71C1C")) +
   scale_x_continuous(limits = c(0, 1)) +
   labs(title    = "Distribución de probabilidades predichas por clase real",
-       subtitle = "Mayor separación entre densidades = mejor capacidad discriminativa",
+       subtitle = "Mayor separación = mejor capacidad discriminativa",
        x = "P(pobre)", y = "Densidad", fill = NULL,
        caption = caption_modelo) +
   tema
 guardar_fig(p_dist, "deck1_04_distribucion_probs")
 
-# 6.5 Calibration plot
+# 6.5 Calibración
 p_cal <- calib |>
   ggplot(aes(prob_media, tasa_obs)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray50") +
@@ -337,8 +361,7 @@ if (!is.null(varimp) && nrow(varimp) > 0) {
     scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
     labs(title    = "Top 15 variables por importancia",
          subtitle = "Mayor importancia = mayor contribución a la predicción",
-         x = "Importance", y = NULL,
-         caption = caption_modelo) +
+         x = "Importance", y = NULL, caption = caption_modelo) +
     tema
   guardar_fig(p_vi, "deck1_06_var_importance", h = 7)
 }
@@ -350,8 +373,7 @@ cm_plot <- cm |>
 p_cm <- cm_plot |>
   ggplot(aes(pred, obs, fill = n)) +
   geom_tile(color = "white", linewidth = 1) +
-  geom_text(aes(label = sprintf("%s\n(%.1f%%)",
-                                scales::comma(n), pct)),
+  geom_text(aes(label = sprintf("%s\n(%.1f%%)", scales::comma(n), pct)),
             size = 6, color = "white", fontface = "bold") +
   scale_fill_gradient(low = "#90A4AE", high = "#0D47A1") +
   labs(title    = "Matriz de confusión",
@@ -362,7 +384,7 @@ p_cm <- cm_plot |>
   tema
 guardar_fig(p_cm, "deck1_07_confusion_matrix", w = 7, h = 6)
 
-# 6.8 F1 por fold (si hubo CV)
+# 6.8 F1 por fold
 if (!is.null(f1_folds)) {
   p_fold <- f1_folds |>
     mutate(fold = reorder(fold, f1)) |>
@@ -375,13 +397,12 @@ if (!is.null(f1_folds)) {
     labs(title    = sprintf("F1 por fold (media = %.3f, sd = %.3f)",
                             mean(f1_folds$f1), sd(f1_folds$f1)),
          subtitle = "Variabilidad del modelo entre folds del CV",
-         x = "Fold", y = "F1",
-         caption = caption_modelo) +
+         x = "Fold", y = "F1", caption = caption_modelo) +
     tema
   guardar_fig(p_fold, "deck1_08_f1_por_fold", w = 8, h = 5)
 }
 
-# 6.9 CV vs Kaggle (gap)
+# 6.9 CV vs Kaggle
 if (!is.na(modelo_sel$kaggle_f1)) {
   gap_long <- tibble(
     set = c("CV (interno)", "Kaggle (público)"),
@@ -398,8 +419,7 @@ if (!is.na(modelo_sel$kaggle_f1)) {
     labs(title    = sprintf("CV F1 vs Kaggle F1 (gap = %.4f)",
                             modelo_sel$cv_f1 - modelo_sel$kaggle_f1),
          subtitle = "Gap positivo grande = posible overfitting al training",
-         x = NULL, y = "F1",
-         caption = caption_modelo) +
+         x = NULL, y = "F1", caption = caption_modelo) +
     tema
   guardar_fig(p_gap, "deck1_09_cv_vs_kaggle", w = 6, h = 5)
 }
@@ -420,30 +440,12 @@ cat(sprintf("  AUC-PR:         %.4f\n", auc_pr))
 cat(sprintf("  Source probs:   %s\n",   P$source))
 cat("\n  Tablas:  ", here(paths$tables),  "\n")
 cat("  Figuras: ", here(paths$figures), "\n")
-cat("\n  Activos generados (prefijo deck1_):\n")
-cat("    Tablas:\n")
-cat("      - deck1_metricas_globales.csv\n")
-cat("      - deck1_confusion_matrix.csv\n")
-cat("      - deck1_sweep_threshold.csv\n")
-cat("      - deck1_calibration.csv\n")
-cat("      - deck1_cv_vs_kaggle.csv\n")
-if (!is.null(f1_folds))   cat("      - deck1_f1_por_fold.csv\n")
-if (!is.null(varimp))     cat("      - deck1_var_importance.csv\n")
-cat("    Figuras:\n")
-cat("      - deck1_01_pr_curve.png\n")
-cat("      - deck1_02_roc_curve.png\n")
-cat("      - deck1_03_f1_vs_threshold.png\n")
-cat("      - deck1_04_distribucion_probs.png\n")
-cat("      - deck1_05_calibration.png\n")
-if (!is.null(varimp))     cat("      - deck1_06_var_importance.png\n")
-cat("      - deck1_07_confusion_matrix.png\n")
-if (!is.null(f1_folds))   cat("      - deck1_08_f1_por_fold.png\n")
-if (!is.na(modelo_sel$kaggle_f1)) cat("      - deck1_09_cv_vs_kaggle.png\n")
 
 # ------------------------------------------------------------
 # 8. LIMPIAR
 # ------------------------------------------------------------
+
 rm(extract_pred, f1_at, guardar_fig, ts, df_yard,
    df_pr, df_roc, sweep, calib, cm, cm_plot, m_at,
-   tabla_metricas, gap_tbl, log_modelos)
+   tabla_metricas, gap_tbl, log_modelos, FILA_MODELO)
 gc()
