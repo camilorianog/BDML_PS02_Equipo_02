@@ -81,7 +81,7 @@ extract_pred <- function(modelo, train, ruta_preds = NULL) {
       probs  = probs,
       obs    = as.integer(train$pobre == 1),
       fold   = NA_character_,
-      source = "OOF (xgb.cv)"
+      source = "In-sample (XGBoost)"
     ))
   }
   # Random Forest (ranger directo): OOB

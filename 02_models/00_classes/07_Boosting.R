@@ -95,60 +95,24 @@ dtest   <- xgb.DMatrix(data = X_test)
 
 # --- Parámetros ---------------------------------------------
 params <- list(
-  booster     = "gbtree",
-  objective   = "binary:logistic",
-  eval_metric = "auc",
-  eta         = 0.05,
-  max_depth   = 6,
-  gamma       = 0,
-  subsample   = 0.8,
+  booster          = "gbtree",
+  objective        = "binary:logistic",
+  eval_metric      = "auc",
+  eta              = 0.05,
+  max_depth        = 6,
+  gamma            = 0,
+  subsample        = 0.8,
   colsample_bytree = 0.8,
   min_child_weight = 5,
-  nthread     = parallel::detectCores() - 1
+  nthread          = parallel::detectCores() - 1
 )
-# --- Preparar matrices --------------------------------------
-dummy_recipe <- dummyVars(~ ., data = train |> select(-id, -pobre),
-                          fullRank = TRUE)
-
-X_train <- predict(dummy_recipe, train |> select(-id, -pobre))
-y_train <- as.numeric(train$pobre == "pobre")
-X_test  <- predict(dummy_recipe, test |> select(-id))
-
-dtrain  <- xgb.DMatrix(data = X_train, label = y_train)
-dtest   <- xgb.DMatrix(data = X_test)
-
-# --- Parámetros ---------------------------------------------
-params <- list(
-  booster     = "gbtree",
-  objective   = "binary:logistic",
-  eval_metric = "auc",
-  eta         = 0.05,
-  max_depth   = 6,
-  gamma       = 0,
-  subsample   = 0.8,
-  colsample_bytree = 0.8,
-  min_child_weight = 5,
-  nthread     = parallel::detectCores() - 1
-)
-
 
 cat("\n>>> [xgb - 3/3] XGBoost nrounds=1000...\n")
 tic("XGBoost")
-nombre_m1 <- "xgb_depth6_eta005_rounds1000"   # 1. define nombre primero
+nombre_m3 <- "xgb_depth6_eta005_rounds1000"
 
 set.seed(SEED)
-cv_res <- xgb.cv(                              # 2. CV para OOF preds
-  params     = params,
-  data       = dtrain,
-  nrounds    = 1000,
-  nfold      = 5,
-  prediction = TRUE,
-  verbose    = 0
-)
-saveRDS(cv_res$pred, file.path(dir_modelo, paste0(nombre_m1, "_train_preds.rds")))
-
-set.seed(SEED)
-m1 <- xgb.train(                               # 3. entrena modelo final
+m3 <- xgb.train(
   params        = params,
   data          = dtrain,
   nrounds       = 1000,
@@ -156,21 +120,26 @@ m1 <- xgb.train(                               # 3. entrena modelo final
   print_every_n = 100
 )
 
-opt1 <- optimizar_threshold(m1, train, train$pobre)   # 4. threshold
-guardar_modelo(m1, nombre_m1, TIPO, dir_modelo, opt1$threshold, opt1$f1)
+# Guardar predicciones in-sample (para métricas deck1)
+probs_train_m3 <- predict(m3, dtrain)
+saveRDS(probs_train_m3,
+        file.path(dir_modelo, paste0(nombre_m3, "_train_preds.rds")))
+
+opt3 <- optimizar_threshold(m3, train, train$pobre)
+guardar_modelo(m3, nombre_m3, TIPO, dir_modelo, opt3$threshold, opt3$f1)
 
 # --- Submission ---------------------------------------------
 dir_sub <- here(paths$submissions, TIPO)
 dir.create(dir_sub, recursive = TRUE, showWarnings = FALSE)
-probs_test <- predict(m1, dtest)
-preds_test <- as.integer(probs_test >= opt1$threshold)
+probs_test <- predict(m3, dtest)
+preds_test <- as.integer(probs_test >= opt3$threshold)
 sub        <- data.frame(id = test$id, pobre = preds_test)
-write.csv(sub, file.path(dir_sub, paste0(nombre_m1, ".csv")), row.names = FALSE)
-cat("    Submission guardada:", nombre_m1, ".csv\n")
+write.csv(sub, file.path(dir_sub, paste0(nombre_m3, ".csv")), row.names = FALSE)
+cat("    Submission guardada:", nombre_m3, ".csv\n")
 toc()
 
 # --- Importancia de variables -------------------------------
-imp_xgb <- xgb.importance(feature_names = colnames(X_train), model = m1)
+imp_xgb <- xgb.importance(feature_names = colnames(X_train), model = m3)
 print(imp_xgb)
 xgb.plot.importance(imp_xgb, top_n = 25)
 
@@ -186,6 +155,7 @@ read.csv(here(paths$models, "log.csv")) |>
   print()
 
 # --- Limpiar entorno ----------------------------------------
-rm(list = ls(pattern = "^(m[0-9]+|opt[0-9]+|nombre)"))
-rm(ctrl, dir_modelo, TIPO)
+rm(list = ls(pattern = "^(m[0-9]+|opt[0-9]+|nombre_m[0-9]+|probs_train)"))
+rm(ctrl, dir_modelo, TIPO, dummy_recipe, X_train, X_test, y_train,
+   dtrain, dtest, params, imp_xgb)
 gc()
