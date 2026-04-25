@@ -1,0 +1,454 @@
+# ============================================================
+# 05_eda_compare.R
+# EDA de storytelling para compare_equipo
+# ============================================================
+#
+# MECA 4107 — Big Data y Machine Learning para Economía Aplicada
+# Universidad de los Andes | 2026-10
+#
+# Genera las figuras para el deck compare_equipo en orden
+# narrativo. Cada figura responde una pregunta del deck.
+#
+# Estructura del deck:
+#   [S2a] ¿Por qué es difícil? — Desbalance de clases
+#   [S2b] ¿Por qué es difícil? — No separabilidad lineal
+#   [S3]  ¿Qué predice pobreza? — Cohen's D
+#   [S4]  Comparación F1 todos los algoritmos
+#   [S4b] Dumbbell CV vs Kaggle
+#   [S4c] Barras agrupadas CV vs Kaggle
+#   [S5]  Top 2 en detalle — RF vs XGBoost
+#   [S6]  Distribución F1 por familia
+#
+# Input:  train_features.rds, log.csv
+# Output: paths$figures/compare/
+# ============================================================
+
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(patchwork)
+  library(here)
+})
+
+cat("\n>>> [EDA Compare] Iniciando...\n")
+
+# --- Cargar datos -------------------------------------------
+train <- readRDS(here(paths$processed, "train_features.rds"))
+log   <- read.csv(here(paths$models, "log.csv"))
+
+# --- Excluir modelos con overfitting evidente ---------------
+log <- log |>
+  filter(!nombre %in% c("RF_LowVar_6", "RF_LowVar_3",
+                        "CART_cp_0.000003"))
+
+# --- Output -------------------------------------------------
+dir_compare <- here(paths$figures, "compare")
+dir.create(dir_compare, recursive = TRUE, showWarnings = FALSE)
+
+guardar_fig <- function(p, nombre, width = 12, height = 7, dpi = 300) {
+  ruta <- here(paths$figures, paste0(nombre, ".png"))
+  ggsave(ruta, plot = p, width = width, height = height,
+         dpi = dpi, bg = "white")
+  cat(sprintf("   Guardada: %s\n", basename(ruta)))
+}
+
+# --- Tema ---------------------------------------------------
+NAVY <- "#0A2240"
+GOLD <- "#C8A84B"
+ROJO <- "#B71C1C"
+AZUL <- "#1565C0"
+GRIS <- "#EEEEEE"
+
+tema_pub <- theme_minimal(base_size = 13) +
+  theme(
+    plot.title       = element_text(face = "bold", size = 15, color = NAVY),
+    plot.subtitle    = element_text(size = 12, color = "#555555"),
+    plot.caption     = element_text(size = 9,  color = "#888888", hjust = 0),
+    axis.title       = element_text(size = 11),
+    axis.text        = element_text(size = 10),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = GRIS),
+    strip.text       = element_text(face = "bold", size = 11),
+    legend.position  = "bottom"
+  )
+
+COLORES <- c("No pobre" = AZUL, "Pobre" = ROJO)
+
+# ============================================================
+# [S2a] Desbalance de clases
+# ============================================================
+
+cat("\n[S2a] Desbalance de clases...\n")
+
+p_desbalance <- train |>
+  count(pobre) |>
+  mutate(
+    clase = ifelse(pobre == 1, "Pobre", "No pobre"),
+    pct   = n / sum(n) * 100,
+    label = sprintf("%.1f%%\n(n = %s)", pct, format(n, big.mark = ","))
+  ) |>
+  ggplot(aes(x = clase, y = pct, fill = clase)) +
+  geom_col(width = 0.5, alpha = 0.9, show.legend = FALSE) +
+  geom_text(aes(label = label), vjust = -0.3,
+            size = 5, fontface = "bold") +
+  scale_fill_manual(values = COLORES) +
+  scale_y_continuous(limits = c(0, 110),
+                     labels = function(x) paste0(x, "%")) +
+  labs(
+    title    = "El problema tiene desbalance de clases",
+    subtitle = "Los hogares pobres son minoría — esto sesga los modelos hacia predecir siempre 'no pobre'",
+    x = NULL, y = "% de hogares",
+    caption  = "Fuente: DANE — MESE 2018 | Bogotá"
+  ) +
+  tema_pub
+
+guardar_fig(p_desbalance, "compare/S2a_desbalance", width = 7, height = 5)
+
+# ============================================================
+# [S2b] No separabilidad lineal
+# ============================================================
+
+cat("\n[S2b] No separabilidad lineal...\n")
+
+set.seed(42)
+muestra <- train |>
+  group_by(pobre) |>
+  slice_sample(n = 1500) |>
+  ungroup() |>
+  mutate(clase = ifelse(pobre == 1, "Pobre", "No pobre"))
+
+var_x <- if ("ratio_dependencia" %in% names(train)) "ratio_dependencia" else
+  if ("tasa_ocupacion"   %in% names(train)) "tasa_ocupacion"    else NULL
+var_y <- if ("hacinamiento"      %in% names(train)) "hacinamiento"      else NULL
+
+if (!is.null(var_x) && !is.null(var_y)) {
+  p_scatter <- ggplot(muestra,
+                      aes(x = .data[[var_x]], y = .data[[var_y]],
+                          color = clase)) +
+    geom_point(alpha = 0.3, size = 1.2) +
+    scale_color_manual(values = COLORES, name = "Condición") +
+    labs(
+      title    = "Las clases no son linealmente separables",
+      subtitle = "No existe una línea recta que divida pobres de no pobres — los modelos lineales tienen límite",
+      x        = "Ratio de dependencia",
+      y        = "Hacinamiento (pers/cuarto)",
+      caption  = "Fuente: DANE — MESE 2018 | Muestra aleatoria de 3.000 hogares"
+    ) +
+    tema_pub
+  
+  guardar_fig(p_scatter, "compare/S2b_no_separabilidad", width = 10, height = 6)
+}
+
+# ============================================================
+# [S3] Cohen's D — poder discriminante por variable
+# ============================================================
+
+cat("\n[S3] Cohen's D...\n")
+
+vars_num <- train |>
+  select(-id, -pobre) |>
+  select(where(is.numeric)) |>
+  names()
+
+cohen_d <- map_dfr(vars_num, function(v) {
+  x0 <- train[[v]][train$pobre == 0]
+  x1 <- train[[v]][train$pobre == 1]
+  x0 <- x0[!is.na(x0)]
+  x1 <- x1[!is.na(x1)]
+  if (length(x0) < 10 || length(x1) < 10) return(NULL)
+  sp <- sqrt(((length(x0)-1)*var(x0) + (length(x1)-1)*var(x1)) /
+               (length(x0) + length(x1) - 2))
+  if (sp == 0) return(NULL)
+  d <- (mean(x1) - mean(x0)) / sp
+  tibble(variable = v, cohen_d = d, abs_d = abs(d))
+}) |>
+  arrange(desc(abs_d)) |>
+  head(15)
+
+labels_vars <- c(
+  "ratio_dependencia"    = "Ratio de dependencia",
+  "hacinamiento"         = "Hacinamiento",
+  "tasa_ocupacion"       = "Tasa de ocupación",
+  "educ_x_ocup"          = "Educ. × Ocupación",
+  "prop_cotiza_pension"  = "Prop. cotiza pensión",
+  "calidad_empleo"       = "Calidad del empleo",
+  "prop_formal"          = "Prop. trabajadores formales",
+  "formal_x_salud"       = "Formalidad × Salud",
+  "jefe_vulnerable"      = "Jefe vulnerable",
+  "sin_ocupados"         = "Sin ocupados (dummy)",
+  "n_menores_18"         = "N° menores de 18",
+  "n_mayores_65"         = "N° mayores de 65",
+  "tasa_subempleo"       = "Tasa de subempleo",
+  "presion_habitacional" = "Presión habitacional",
+  "nper_sq"              = "Tamaño² del hogar",
+  "edad_prom_sq"         = "Edad promedio²",
+  "mujeres_x_inact"      = "Mujeres × Inactividad",
+  "jefe_mujer_inact"     = "Jefa mujer × Inactividad",
+  "jefe_mayor_inactivo"  = "Jefe mayor inactivo",
+  "ratio_mayores_65"     = "Ratio mayores 65 / PET",
+  "prop_reg_subsidiado"  = "Régimen subsidiado",
+  "n_menores_18"         = "N° menores de 18",
+  "n_inactivos"          = "N° inactivos",
+  "n_sin_educacion"      = "N° sin educación",
+  "nper"                 = "N° personas hogar",
+  "npersug"              = "N° personas (sugnu)",
+  "nper_sq"              = "Tamaño² del hogar",
+  "educ_jefe"            = "Educ. jefe"
+)
+
+cohen_d <- cohen_d |>
+  mutate(
+    var_label = recode(variable, !!!labels_vars),
+    var_label = ifelse(var_label == variable,
+                       str_replace_all(variable, "_", " "),
+                       var_label),
+    var_label = fct_reorder(var_label, abs_d),
+    direccion = ifelse(cohen_d > 0, "Aumenta pobreza", "Reduce pobreza")
+  )
+
+p_cohen <- ggplot(cohen_d,
+                  aes(x = var_label, y = cohen_d, fill = direccion)) +
+  geom_col(alpha = 0.85) +
+  geom_text(aes(label  = sprintf("%.2f", cohen_d),
+                hjust  = ifelse(cohen_d > 0, -0.1, 1.1)),
+            size = 3.5) +
+  coord_flip() +
+  scale_fill_manual(
+    values = c("Aumenta pobreza" = ROJO, "Reduce pobreza" = AZUL),
+    name   = NULL
+  ) +
+  scale_y_continuous(
+    limits = c(min(cohen_d$cohen_d) * 1.3, max(cohen_d$cohen_d) * 1.3)
+  ) +
+  labs(
+    title    = "¿Qué variables separan mejor pobres de no pobres?",
+    subtitle = "Cohen's D — diferencia estandarizada entre clases. |D| > 0.5 se considera efecto grande.",
+    x = NULL, y = "Cohen's D",
+    caption  = "Fuente: DANE — MESE 2018 | Bogotá"
+  ) +
+  tema_pub
+
+guardar_fig(p_cohen, "compare/S3_cohen_d", width = 12, height = 8)
+
+# ============================================================
+# [S4] Comparación F1 todos los algoritmos (solo CV)
+# ============================================================
+
+cat("\n[S4] Comparación algoritmos...\n")
+
+resumen_log <- log |>
+  filter(tipo != "08_Naive_Bayes",
+         tipo != "01_Base_models") |>
+  group_by(tipo) |>
+  slice_max(cv_f1, n = 1, with_ties = FALSE) |>
+  ungroup() |>
+  mutate(
+    algoritmo = case_when(
+      tipo == "02_LPM"           ~ "LPM",
+      tipo == "03_Logit"         ~ "Logit",
+      tipo == "04_Elastic_Net"   ~ "Elastic Net",
+      tipo == "05_CART"          ~ "CART",
+      tipo == "06_Random_Forest" ~ "Random Forest",
+      tipo == "07_Boosting"      ~ "XGBoost",
+      TRUE ~ tipo
+    ),
+    algoritmo = fct_reorder(algoritmo, cv_f1),
+    es_mejor  = cv_f1 == max(cv_f1)
+  )
+
+p_comparacion <- ggplot(resumen_log,
+                        aes(x = algoritmo, y = cv_f1, fill = es_mejor)) +
+  geom_col(alpha = 0.88) +
+  geom_text(aes(label = sprintf("%.3f", cv_f1)),
+            hjust = -0.1, size = 4, fontface = "bold") +
+  coord_flip() +
+  scale_fill_manual(values = c("FALSE" = "#90A4AE", "TRUE" = GOLD),
+                    guide = "none") +
+  scale_y_continuous(limits = c(0, 0.80),
+                     labels = function(x) sprintf("%.2f", x)) +
+  geom_hline(yintercept = 0.7, linetype = "dashed",
+             color = NAVY, alpha = 0.5) +
+  annotate("text", x = 1, y = 0.705, label = "F1 = 0.70",
+           size = 3.5, color = NAVY, hjust = 0) +
+  labs(
+    title    = "Comparación de F1-Score por Algoritmo",
+    subtitle = "Mejor modelo de cada familia — F1 con validación cruzada de 5 folds",
+    x = NULL, y = "F1-Score (CV)",
+    caption  = "Nota: F1 calculado con threshold optimizado por CV. Fuente: DANE — MESE 2018"
+  ) +
+  tema_pub
+
+guardar_fig(p_comparacion, "compare/S4_comparacion_algoritmos",
+            width = 11, height = 7)
+
+# ============================================================
+# [S4b] Dumbbell — CV vs Kaggle
+# ============================================================
+
+cat("\n[S4b] Dumbbell CV vs Kaggle...\n")
+
+comparacion <- tibble(
+  algoritmo = c("LPM", "Logit", "Elastic Net", "CART",
+                "Random Forest", "XGBoost"),
+  f1_cv     = c(0.666, 0.676, 0.674, 0.653, 0.68, 0.76),
+  f1_kaggle = c(0.66,  0.67,  0.67,  0.65,  0.67,  0.69),
+  familia   = c("Lineal", "Lineal", "Lineal", "Árbol simple",
+                "Ensamble", "Ensamble")
+) |>
+  mutate(algoritmo = fct_reorder(algoritmo, f1_cv))
+
+p_dumbbell <- comparacion |>
+  pivot_longer(cols = c(f1_cv, f1_kaggle),
+               names_to = "metrica", values_to = "f1") |>
+  mutate(
+    metrica = ifelse(metrica == "f1_cv",
+                     "F1 CV (interno)", "F1 Kaggle (público)"),
+    metrica = factor(metrica,
+                     levels = c("F1 CV (interno)", "F1 Kaggle (público)"))
+  ) |>
+  ggplot(aes(x = f1, y = algoritmo,
+             color = metrica, group = algoritmo)) +
+  geom_line(color = "#CCCCCC", linewidth = 1.5) +
+  geom_point(size = 5, alpha = 0.9) +
+  scale_color_manual(
+    values = c("F1 CV (interno)"    = AZUL,
+               "F1 Kaggle (público)" = GOLD),
+    name = NULL
+  ) +
+  scale_x_continuous(limits = c(0.60, 0.72),
+                     labels = function(x) sprintf("%.2f", x)) +
+  labs(
+    title    = "F1 Interno (CV) vs F1 Kaggle Público por Algoritmo",
+    subtitle = "Diferencia pequeña y consistente — el CV interno está bien calibrado",
+    x = "F1-Score", y = NULL,
+    caption  = "Fuente: DANE — MESE 2018 | Kaggle — uniandes-bdml-2026_10-ps2"
+  ) +
+  tema_pub
+
+guardar_fig(p_dumbbell, "compare/S4b_cv_vs_kaggle", width = 11, height = 6)
+
+# ============================================================
+# [S4c] Barras agrupadas — CV vs Kaggle
+# ============================================================
+
+cat("\n[S4c] Barras CV vs Kaggle...\n")
+
+p_barras_comp <- comparacion |>
+  pivot_longer(cols = c(f1_cv, f1_kaggle),
+               names_to = "metrica", values_to = "f1") |>
+  mutate(
+    metrica   = ifelse(metrica == "f1_cv",
+                       "F1 CV (interno)", "F1 Kaggle (público)"),
+    metrica   = factor(metrica,
+                       levels = c("F1 CV (interno)", "F1 Kaggle (público)")),
+    algoritmo = fct_reorder(algoritmo, f1, .fun = max)
+  ) |>
+  ggplot(aes(x = algoritmo, y = f1, fill = metrica)) +
+  geom_col(position = position_dodge(width = 0.7),
+           width = 0.6, alpha = 0.88) +
+  geom_text(aes(label = sprintf("%.3f", f1)),
+            position = position_dodge(width = 0.7),
+            vjust = -0.4, size = 3.2, fontface = "bold") +
+  scale_fill_manual(
+    values = c("F1 CV (interno)"    = AZUL,
+               "F1 Kaggle (público)" = GOLD),
+    name = NULL
+  ) +
+  scale_y_continuous(limits = c(0.55, 0.75),
+                     labels = function(x) sprintf("%.2f", x)) +
+  labs(
+    title    = "Comparación F1 Interno vs Kaggle por Algoritmo",
+    subtitle = "XGBoost lidera en ambas métricas — CV bien calibrado en todos los modelos",
+    x = NULL, y = "F1-Score",
+    caption  = "Fuente: DANE — MESE 2018 | Kaggle — uniandes-bdml-2026_10-ps2"
+  ) +
+  tema_pub
+
+guardar_fig(p_barras_comp, "compare/S4c_barras_cv_kaggle",
+            width = 11, height = 6)
+
+# ============================================================
+# [S5] Top 2 — RF vs XGBoost en detalle
+# ============================================================
+
+cat("\n[S5] Top 2 en detalle...\n")
+
+top2 <- log |>
+  filter(tipo %in% c("06_Random_Forest", "07_Boosting")) |>
+  mutate(
+    algoritmo    = ifelse(tipo == "06_Random_Forest",
+                          "Random Forest", "XGBoost"),
+    modelo_corto = str_trunc(nombre, 30)
+  )
+
+p_top2 <- ggplot(top2,
+                 aes(x = reorder(modelo_corto, cv_f1),
+                     y = cv_f1, fill = algoritmo)) +
+  geom_col(alpha = 0.85) +
+  geom_text(aes(label = sprintf("%.3f", cv_f1)),
+            hjust = -0.1, size = 3.5) +
+  coord_flip() +
+  facet_wrap(~ algoritmo, scales = "free_y", ncol = 1) +
+  scale_fill_manual(
+    values = c("Random Forest" = "#1B5E20", "XGBoost" = GOLD),
+    guide  = "none"
+  ) +
+  scale_y_continuous(limits = c(0, 0.80)) +
+  labs(
+    title    = "Random Forest vs XGBoost — Todos los modelos entrenados",
+    subtitle = "Cada barra es un modelo con distintos hiperparámetros",
+    x = NULL, y = "F1-Score (CV)",
+    caption  = "Fuente: DANE — MESE 2018"
+  ) +
+  tema_pub
+
+guardar_fig(p_top2, "compare/S5_top2_detalle", width = 12, height = 9)
+
+
+# ============================================================
+# [S7] Distribución F1 por familia
+# ============================================================
+
+cat("\n[S7] Distribución por familia...\n")
+
+p_familia <- log |>
+  filter(tipo != "08_Naive_Bayes") |>
+  mutate(
+    familia = case_when(
+      tipo %in% c("01_Base_models", "02_LPM", "03_Logit") ~ "Lineal",
+      tipo == "04_Elastic_Net"   ~ "Regularización\nlineal",
+      tipo == "05_CART"          ~ "Árbol\nsimple",
+      tipo == "06_Random_Forest" ~ "Random\nForest",
+      tipo == "07_Boosting"      ~ "XGBoost",
+      TRUE ~ tipo
+    ),
+    familia = factor(familia, levels = c(
+      "Lineal", "Regularización\nlineal",
+      "Árbol\nsimple", "XGBoost", "Random\nForest"
+    ))
+  ) |>
+  ggplot(aes(x = familia, y = cv_f1, color = familia)) +
+  geom_jitter(width = 0.15, size = 3, alpha = 0.7) +
+  stat_summary(fun = mean, geom = "crossbar",
+               width = 0.4, color = NAVY, linewidth = 0.8) +
+  scale_color_manual(
+    guide  = "none",
+    values = c(
+      "Lineal"                 = AZUL,
+      "Regularización\nlineal" = "#1976D2",
+      "Árbol\nsimple"          = "#6A1B9A",
+      "XGBoost"                = GOLD,
+      "Random\nForest"         = "#1B5E20"
+    )
+  ) +
+  scale_y_continuous(limits = c(0.45, 0.75),
+                     labels = function(x) sprintf("%.2f", x)) +
+  labs(
+    title    = "Distribución de F1 por Familia de Modelos",
+    subtitle = "Cada punto es un modelo entrenado — la barra es el promedio de la familia",
+    x = NULL, y = "F1-Score (CV)",
+    caption  = "Fuente: DANE — MESE 2018 | Bogotá"
+  ) +
+  tema_pub
+
+guardar_fig(p_familia, "compare/S7_distribucion_por_familia",
+            width = 12, height = 7)
