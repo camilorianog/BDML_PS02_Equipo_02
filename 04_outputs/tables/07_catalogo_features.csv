@@ -1,0 +1,26 @@
+feature,signo_esperado,cita,mecanismo
+ratio_dependencia,+,IDB Costa Rica 2018,Más dependientes por ocupado → menor ingreso per cápita
+hacinamiento,+,Banerjee 2018; UN-Habitat 2020,Densidad habitacional alta es proxy de calidad de vida baja
+educ_x_ocup,-,Nkurunziza 2024; Marrugo-Arnedo 2015,Capital humano solo paga si está empleado
+rural_x_ocup,+,Obando-Andrián 2015; WB 2019,"Empleo rural = baja productividad, alta informalidad"
+formal_x_salud,-,WB 2019; UNDP-ECLAC 2024,Formalidad plena = ingreso estable y protegido
+nper_sq,+,UN Statistics 2005; SOAS 2005,Hogares grandes — efecto no lineal sobre pobreza
+edad_prom_sq,+,Obando-Andrián 2015; Banerjee 2018,U-invertida: muy jóvenes y muy viejos más vulnerables
+mujeres_x_inact,+,Corral 2024; UNDP-ECLAC 2024,Brecha de género laboral × falta de ingreso
+jefe_mujer_inact,+,Bleynat 2020; Chant 2003,Jefatura femenina pesa cuando se combina con inactividad
+tasa_inactivos,+,DANE GEIH 2018,Fracción de PET sin trabajo → menor ingreso
+sin_ocupados,+,WB 2019,Hogar sin ocupados = vulnerabilidad extrema
+educ_jefe_x_ocup,-,Nkurunziza 2024,Capital humano del jefe activado por empleo
+calidad_empleo,-,WB 2019; UNDP-ECLAC 2024,Horas × formalidad como proxy de ingreso laboral
+presion_habitacional,+,UN-Habitat 2020,Cuartos usados / disponibles — densidad efectiva
+jefe_vulnerable,+,Corral 2024; Nkurunziza 2024,Jefe sin empleo y baja educación → pobreza crónica
+doble_proteccion,-,UNDP-ECLAC 2024,Cobertura laboral completa → ingreso estable
+ratio_mayores_65,+,WB 2019,Carga de vejez sobre PET
+jefe_mayor_inactivo,+,Banerjee 2018,Jefe >60 sin empleo → dependencia de transferencias
+tasa_ocupacion,-,DANE GEIH,Más ocupados en el hogar → más ingreso
+nper,+,UN Statistics 2005,Más bocas que alimentar
+edad_jefe,?,Banerjee 2018,Relación U con pobreza
+jefe_mujer,+,Chant 2003,Asociado a feminización de la pobreza
+prop_cotiza_pension,-,WB 2019,Formalidad — ingreso protegido
+prop_afiliado_salud,-,UNDP-ECLAC 2024,Acceso a salud contributiva = formalidad
+horas_trabajo_prom,-,DANE GEIH,Horas trabajadas → ingreso laboral

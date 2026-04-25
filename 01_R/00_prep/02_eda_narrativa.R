@@ -8,7 +8,7 @@
 #   tres lentes que se refuerzan mutuamente:
 #     (1) LITERATURA   — qué predice cada feature según la teoría
 #     (2) DESCRIPTIVAS — diferencias pobre/no-pobre con effect sizes y tests
-#     (3) MODELOS      — importancia y signo de coeficientes (Logit, Lasso, RF)
+#     (3) MODELOS      — importancia y signo de coeficientes (Logit, en, RF)
 #
 # Output:
 #   Tablas (paths$tables)  — *.csv con los rankings y métricas
@@ -134,11 +134,11 @@ cat(sprintf("       %d features procesadas | %d con signo esperado correcto\n",
             nrow(desc), sum(desc$signo_ok, na.rm = TRUE)))
 
 # ==============================================================================
-# BLOQUE 3 — IMPORTANCIA EN MODELOS (Logit, Lasso, RF)
+# BLOQUE 3 — IMPORTANCIA EN MODELOS (Logit, en, RF)
 # ==============================================================================
 # Re-fit ligero para extraer:
 #   - Logit: coeficientes z-estandarizados (signo + magnitud)
-#   - Lasso: coeficientes con λ.1se (selección parsimoniosa)
+#   - en: coeficientes con λ.1se (selección parsimoniosa)
 #   - RF:    permutation importance
 # ==============================================================================
 
@@ -149,7 +149,7 @@ feats_modelo <- feats_modelo[sapply(train[feats_modelo], is.numeric)]
 X_df <- train |> select(all_of(feats_modelo))
 y    <- train$pobre_bin
 
-# Estandarización para coeficientes comparables (solo para logit/lasso)
+# Estandarización para coeficientes comparables (solo para logit/en)
 X_std <- scale(as.matrix(X_df))
 X_std[is.na(X_std)] <- 0
 
@@ -161,26 +161,29 @@ coef_logit <- broom::tidy(fit_logit) |>
   mutate(feature = sub("^X_std", "", term)) |>
   select(feature, estimate_logit = estimate, p_logit = p.value)
 
-# --- 3b. Lasso (cv.glmnet, λ.1se) --------------------------------------------
-cat("       Lasso (cv.glmnet, λ.1se)...\n")
+# --- 3b. Elastic Net (cv.glmnet, λ.1se) --------------------------------------------
+cat("       EN (cv.glmnet, λ.1se)...\n")
 set.seed(SEED)
-cvl <- cv.glmnet(X_std, y, family = "binomial", alpha = 1, nfolds = 5)
-coef_lasso <- as.matrix(coef(cvl, s = "lambda.1se"))
-coef_lasso <- tibble(
-  feature        = rownames(coef_lasso),
-  estimate_lasso = as.numeric(coef_lasso)
+cvl <- cv.glmnet(X_std, y, family = "binomial", alpha = 0.5, nfolds = 5)
+coef_en <- as.matrix(coef(cvl, s = "lambda.1se"))
+coef_en <- tibble(
+  feature        = rownames(coef_en),
+  estimate_en = as.numeric(coef_en)
 ) |> filter(feature != "(Intercept)") |>
   mutate(feature = sub("^X_std", "", feature))
 
 # --- 3c. Random Forest permutation importance --------------------------------
-cat("       Random Forest (ntree=100, permutation importance)...\n")
+cat("       Random Forest (ntree=1000, permutation importance)...\n")
 set.seed(SEED)
 rf <- ranger(
   y = factor(y), x = X_df,
-  num.trees    = 100,
+  num.trees    = 1000,
   importance   = "permutation",
+  min.node.size = 10,
+  splitrule = "extratrees",
+  mtry = ncol(X_df) - 2,
   num.threads  = max(1, parallel::detectCores() - 1),
-  probability  = FALSE
+  probability  = TRUE
 )
 imp_rf <- tibble(
   feature   = names(rf$variable.importance),
@@ -192,14 +195,14 @@ ranking <- desc |>
   select(feature, signo_esperado, cita, mecanismo,
          cohens_d, corr_pearson, p_value) |>
   left_join(coef_logit, by = "feature") |>
-  left_join(coef_lasso, by = "feature") |>
+  left_join(coef_en, by = "feature") |>
   left_join(imp_rf,     by = "feature") |>
   mutate(
     rank_d     = rank(-abs(cohens_d),       na.last = "keep"),
     rank_logit = rank(-abs(estimate_logit), na.last = "keep"),
-    rank_lasso = rank(-abs(estimate_lasso), na.last = "keep"),
+    rank_en = rank(-abs(estimate_en), na.last = "keep"),
     rank_rf    = rank(-imp_rf,              na.last = "keep"),
-    rank_avg   = rowMeans(across(c(rank_d, rank_logit, rank_lasso, rank_rf)),
+    rank_avg   = rowMeans(across(c(rank_d, rank_logit, rank_en, rank_rf)),
                           na.rm = TRUE)
   ) |>
   arrange(rank_avg)
@@ -255,13 +258,13 @@ guardar_fig(fig7, "07_cohens_d_forest", w = 11, h = 9)
 # --- Fig 8. Ranking cross-modelo (heatmap de ranks) --------------------------
 fig8_dat <- ranking |>
   slice_head(n = 20) |>
-  select(feature, rank_d, rank_logit, rank_lasso, rank_rf) |>
+  select(feature, rank_d, rank_logit, rank_en, rank_rf) |>
   pivot_longer(-feature, names_to = "fuente", values_to = "rango") |>
   mutate(
     fuente  = recode(fuente,
                      rank_d     = "Cohen's d",
                      rank_logit = "Logit |z|",
-                     rank_lasso = "Lasso |β|",
+                     rank_en = "en |β|",
                      rank_rf    = "RF importance"),
     feature = fct_rev(fct_inorder(feature))
   )
@@ -276,7 +279,7 @@ fig8 <- ggplot(fig8_dat, aes(x = fuente, y = feature, fill = rango)) +
   labs(title    = "Importancia Cross-Modelo — Top 20 Features",
        subtitle = "Las features que aparecen en color oscuro en TODAS las columnas son las más robustas",
        x = NULL, y = NULL,
-       caption = "Rangos calculados sobre |Cohen's d|, |coef Logit z|, |coef Lasso|, importancia permutación RF") +
+       caption = "Rangos calculados sobre |Cohen's d|, |coef Logit z|, |coef en|, importancia permutación RF") +
   tema_pub +
   theme(panel.grid = element_blank(),
         axis.text.y = element_text(size = 10))
@@ -325,7 +328,7 @@ fig10 <- ggplot(storyboard_dat,
   labs(title    = "Top 6 Features por Consenso Cross-Modelo",
        subtitle = "Distribución de pobres vs no pobres — separación visual valida la importancia estadística",
        x = NULL, y = "Densidad", fill = NULL, color = NULL,
-       caption = "Ranking promedio de Cohen's d, Logit, Lasso y RF") +
+       caption = "Ranking promedio de Cohen's d, Logit, en y RF") +
   tema_pub
 
 guardar_fig(fig10, "10_storyboard_top_features", w = 14, h = 8)
@@ -362,8 +365,8 @@ cat(sprintf("     · Con signo esperado correcto:        %d (%.0f%%)\n",
             mean(desc$signo_ok, na.rm = TRUE) * 100))
 cat(sprintf("     · Con effect size moderado o grande:  %d\n",
             sum(abs(desc$cohens_d) >= 0.5, na.rm = TRUE)))
-cat(sprintf("     · Seleccionadas por Lasso (β≠0):      %d\n",
-            sum(coef_lasso$estimate_lasso != 0)))
+cat(sprintf("     · Seleccionadas por en (β≠0):      %d\n",
+            sum(coef_en$estimate_en != 0)))
 
 cat("\n     Top 10 features por consenso cross-modelo:\n")
 print(ranking |> slice_head(n = 10) |>

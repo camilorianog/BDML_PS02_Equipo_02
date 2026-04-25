@@ -1,0 +1,5 @@
+"obs","pred","n","pct"
+"Pobre","Pobre",21774,13.2
+"Pobre","No pobre",11250,6.82
+"No pobre","Pobre",10458,6.34
+"No pobre","No pobre",121478,73.64

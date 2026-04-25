@@ -1,0 +1,9 @@
+"metrica","valor"
+"AUC-ROC",0.9124
+"AUC-PR",0.7391
+"Precision",0.6755
+"Recall",0.6593
+"F1",0.6673
+"Accuracy",0.8684
+"Threshold",0.4
+"Tasa base (Pobre)",0.2002
