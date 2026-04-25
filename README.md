@@ -61,7 +61,12 @@ El script maestro ejecuta secuencialmente:
 │
 ├── 01_R/
 │   ├── 00_prep/
-│   │   └── 00_clean.R         # Limpieza, merge hogares–personas y reporte de missings
+│   │   ├── 00_clean.R                        # Limpieza y preparación — versión final
+│   │   ├── 00_clean_v2(Decomissioned).R       # Versión anterior — ver nota
+│   │   ├── 00_clean_v3(Decomissioned).R       # Versión anterior — ver nota
+│   │   ├── 01_eda.R                           # Análisis exploratorio de datos
+│   │   ├── 02_eda_narrativa.R                 # EDA con narrativa interpretativa
+│   │   └── 03_eda_comparision.R               # EDA comparativo entre subgrupos
 │   ├── 01_feat/
 │   │   └── 00_features.R      # Feature engineering desde nivel individual
 │   ├── 02_functions/
@@ -83,7 +88,7 @@ El script maestro ejecuta secuencialmente:
     │   └── 08_Naive_Bayes.R
     └── 01_submissions/        # Archivos de submission (ignorados en git)
 ```
-
+Nota sobre versiones decomisionadas: Los archivos marcados como Decomissioned corresponden a iteraciones anteriores del proceso de limpieza de datos. Se conservan intencionalmente en el repositorio como evidencia del proceso formativo del equipo — cada versión refleja distintas decisiones de manejo de missings, transformación de variables y construcción de la muestra que fueron descartadas o mejoradas en la versión final.
 ---
 
 ## Datos
