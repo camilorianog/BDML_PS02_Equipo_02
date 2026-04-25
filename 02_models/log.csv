@@ -18,4 +18,4 @@
 "04_Elastic_Net","EN_ridge_lambda_0.011721",0.32,0.6678,NA
 "04_Elastic_Net","EN_lasso_lambda_1e-04",0.325,0.6757,NA
 "04_Elastic_Net","EN_mix_lambda_1e-04",0.32,0.6759,NA
-"07_Boosting","xgb_depth6_eta005_rounds1000",0.37,0.7685,NA
+"07_Boosting","xgb_depth6_eta005_rounds1000",0.25,0,NA

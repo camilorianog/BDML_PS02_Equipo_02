@@ -111,6 +111,25 @@ cat("\n>>> [xgb - 3/3] XGBoost nrounds=1000...\n")
 tic("XGBoost")
 nombre_m3 <- "xgb_depth6_eta005_rounds1000"
 
+# --- OOF predictions via k-fold manual ----------------------
+cat(sprintf("    Generando OOF predictions (%d folds)...\n", CV_FOLDS))
+set.seed(SEED)
+folds         <- createFolds(y_train, k = CV_FOLDS, list = TRUE, returnTrain = FALSE)
+oof_preds_m3  <- numeric(length(y_train))
+
+for (k in seq_along(folds)) {
+  cat(sprintf("      Fold %d/%d\n", k, CV_FOLDS))
+  val_idx  <- folds[[k]]
+  tr_idx   <- setdiff(seq_along(y_train), val_idx)
+  d_tr     <- xgb.DMatrix(data = X_train[tr_idx, ], label = y_train[tr_idx])
+  d_val    <- xgb.DMatrix(data = X_train[val_idx, ])
+  fold_m   <- xgb.train(params = params, data = d_tr, nrounds = 1000, verbose = 0)
+  oof_preds_m3[val_idx] <- predict(fold_m, d_val)
+  rm(fold_m, d_tr, d_val)
+}
+saveRDS(oof_preds_m3, file.path(dir_modelo, paste0(nombre_m3, "_train_preds.rds")))
+
+# --- Modelo final sobre todo el training --------------------
 set.seed(SEED)
 m3 <- xgb.train(
   params        = params,
@@ -120,12 +139,22 @@ m3 <- xgb.train(
   print_every_n = 100
 )
 
-# Guardar predicciones in-sample (para métricas deck1)
-probs_train_m3 <- predict(m3, dtrain)
-saveRDS(probs_train_m3,
-        file.path(dir_modelo, paste0(nombre_m3, "_train_preds.rds")))
-
-opt3 <- optimizar_threshold(m3, train, train$pobre)
+# --- Threshold óptimo sobre OOF preds -----------------------
+y_bin_m3    <- as.integer(train$pobre == "pobre")
+thresh_grid <- seq(0.25, 0.55, by = 0.005)
+f1_grid     <- map_dbl(thresh_grid, function(t) {
+  preds <- as.integer(oof_preds_m3 >= t)
+  tp    <- sum(preds == 1 & y_bin_m3 == 1)
+  fp    <- sum(preds == 1 & y_bin_m3 == 0)
+  fn    <- sum(preds == 0 & y_bin_m3 == 1)
+  prec  <- if (tp + fp == 0) 0 else tp / (tp + fp)
+  rec   <- if (tp + fn == 0) 0 else tp / (tp + fn)
+  if (prec + rec == 0) 0 else 2 * prec * rec / (prec + rec)
+})
+opt3 <- list(threshold = thresh_grid[which.max(f1_grid)],
+             f1        = max(f1_grid))
+cat(sprintf("    Threshold óptimo (OOF): %.3f | F1 OOF: %.4f\n",
+            opt3$threshold, opt3$f1))
 guardar_modelo(m3, nombre_m3, TIPO, dir_modelo, opt3$threshold, opt3$f1)
 
 # --- Submission ---------------------------------------------
@@ -155,7 +184,7 @@ read.csv(here(paths$models, "log.csv")) |>
   print()
 
 # --- Limpiar entorno ----------------------------------------
-rm(list = ls(pattern = "^(m[0-9]+|opt[0-9]+|nombre_m[0-9]+|probs_train)"))
+rm(list = ls(pattern = "^(m[0-9]+|opt[0-9]+|nombre_m[0-9]+|oof_preds|y_bin|thresh_grid|f1_grid|folds|k|val_idx|tr_idx)"))
 rm(ctrl, dir_modelo, TIPO, dummy_recipe, X_train, X_test, y_train,
    dtrain, dtest, params, imp_xgb)
 gc()

@@ -11,39 +11,6 @@
 # correr este script desde un entorno donde esos objetos existan.
 # ============================================================
 
-if (!exists("paths")) {
-  stop("paths no está definido. Corre primero 00_rundirectory.R o ",
-       "carga manualmente: pacman::p_load(here, tidyverse, yardstick, ",
-       "scales, caret, ranger) y define paths.")
-}
-
-pacman::p_load(here, tidyverse, yardstick, scales, caret, ranger)
-
-# ------------------------------------------------------------
-# 1. SELECCIÓN DEL MEJOR MODELO 
-# ------------------------------------------------------------
-
-ruta_log <- here(paths$models, "log.csv")
-if (!file.exists(ruta_log)) {
-  stop("No existe ", ruta_log, ". Entrena algún modelo primero.")
-}
-
-log_modelos <- read.csv(ruta_log, stringsAsFactors = FALSE) |>
-  mutate(
-    cv_f1     = suppressWarnings(as.numeric(cv_f1)),
-    kaggle_f1 = suppressWarnings(as.numeric(kaggle_f1)),
-    threshold = suppressWarnings(as.numeric(threshold))
-  )
-
-cat("\n================================================\n")
-cat("  Modelos disponibles en log.csv\n")
-cat("================================================\n")
-print(log_modelos |> select(any_of(c("fila", "tipo", "nombre", "cv_f1", "kaggle_f1", "threshold"))) |>
-        tibble::rownames_to_column("fila"), row.names = FALSE)
-
-fila_sel <- suppressWarnings(
-  as.integer(readline(prompt = "\nIngresa el número de fila del modelo a usar: "))
-)
 if (is.na(fila_sel) || fila_sel < 1 || fila_sel > nrow(log_modelos)) {
   stop("Fila inválida. Ingresa un número entre 1 y ", nrow(log_modelos), ".")
 }
