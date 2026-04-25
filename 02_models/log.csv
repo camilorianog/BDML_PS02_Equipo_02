@@ -10,7 +10,7 @@
 "04_Elastic_Net","EN_ridge_lambda_0.011721",0.325,0.6653,NA
 "04_Elastic_Net","EN_lasso_lambda_1e-04",0.325,0.673,NA
 "04_Elastic_Net","EN_mix_lambda_1e-04",0.325,0.6733,NA
-"01_Base_models","logit_baseline",0.3,0.615,NA
 "05_CART","CART_cp_0.018047",0.25,0.4678,NA
 "06_Random_Forest","RF_mtry_5",0.34,0.6043,NA
 "07_Boosting","XGB_depth_3_eta_0.4",0.29,0.6288,NA
+"01_Base_models","logit_baseline",0.325,0.6758,NA
