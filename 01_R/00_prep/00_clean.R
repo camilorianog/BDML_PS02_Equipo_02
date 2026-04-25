@@ -1,17 +1,6 @@
 # ============================================================
-# 00_clean_v3.R
+# 00_clean.R
 # Limpieza general del dataset
-# ============================================================
-#
-# MECA 4107 — Big Data y Machine Learning para Economía Aplicada
-# Universidad de los Andes | 2026-10
-#
-# Descripción:
-#   Carga los archivos raw de hogares y personas, excluye
-#   variables con leakage (ingresos, líneas de pobreza),
-#   agrega personas al nivel de hogar, imputa NAs y
-#   winsoriza outliers extremos.
-#   Output: train_clean.rds, test_clean.rds
 # ============================================================
 
 # --- Verificar datos ----------------------------------------
