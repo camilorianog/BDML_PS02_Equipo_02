@@ -47,12 +47,12 @@ fila_sel <- suppressWarnings(
 if (is.na(fila_sel) || fila_sel < 1 || fila_sel > nrow(log_modelos)) {
   stop("Fila inválida. Ingresa un número entre 1 y ", nrow(log_modelos), ".")
 }
-best <- log_modelos[fila_sel, ]
+modelo_sel <- log_modelos[fila_sel, ]
 
 cat("\n  Modelo seleccionado:\n")
-print(best)
+print(modelo_sel)
 
-ruta_rds <- here(paths$submissions, best$tipo, paste0(best$nombre, ".rds"))
+ruta_rds <- here(paths$submissions, modelo_sel$tipo, paste0(modelo_sel$nombre, ".rds"))
 if (!file.exists(ruta_rds)) {
   stop("No se encontró el .rds del modelo en: ", ruta_rds)
 }
@@ -69,7 +69,21 @@ test  <- readRDS(here(paths$processed, "test_features.rds"))
 # 3. EXTRAER PROBABILIDADES Y OBSERVADO
 # ------------------------------------------------------------
 
-extract_pred <- function(modelo, train) {
+extract_pred <- function(modelo, train, ruta_preds = NULL) {
+  # XGBoost (xgb.Booster): lee OOF preds guardadas en _train_preds.rds
+  if (inherits(modelo, "xgb.Booster")) {
+    if (is.null(ruta_preds) || !file.exists(ruta_preds)) {
+      stop("XGBoost requiere el archivo _train_preds.rds. ",
+           "Ruta esperada: ", ruta_preds)
+    }
+    probs <- as.numeric(readRDS(ruta_preds))
+    return(list(
+      probs  = probs,
+      obs    = as.integer(train$pobre == 1),
+      fold   = NA_character_,
+      source = "OOF (xgb.cv)"
+    ))
+  }
   # Random Forest (ranger directo): OOB
   if (inherits(modelo, "ranger")) {
     return(list(
@@ -108,8 +122,10 @@ extract_pred <- function(modelo, train) {
   )
 }
 
-P         <- extract_pred(modelo, train)
-threshold <- as.numeric(best$threshold)
+ruta_preds <- here(paths$submissions, modelo_sel$tipo,
+                   paste0(modelo_sel$nombre, "_train_preds.rds"))
+P         <- extract_pred(modelo, train, ruta_preds)
+threshold <- as.numeric(modelo_sel$threshold)
 
 cat(sprintf("\n  Source predicciones: %s\n", P$source))
 cat(sprintf("  Threshold:           %.4f\n", threshold))
@@ -225,10 +241,10 @@ if (!is.null(varimp)) {
 # 5.7 Comparación CV vs Kaggle (gap de overfitting)
 gap_tbl <- tibble(
   metrica   = c("CV F1", "Kaggle F1", "Gap (CV - Kaggle)"),
-  valor     = c(best$cv_f1,
-                best$kaggle_f1,
-                if (is.na(best$kaggle_f1)) NA_real_
-                else best$cv_f1 - best$kaggle_f1)
+  valor     = c(modelo_sel$cv_f1,
+                modelo_sel$kaggle_f1,
+                if (is.na(modelo_sel$kaggle_f1)) NA_real_
+                else modelo_sel$cv_f1 - modelo_sel$kaggle_f1)
 ) |> mutate(valor = round(valor, 4))
 write.csv(gap_tbl, here(paths$tables, "deck1_cv_vs_kaggle.csv"),
           row.names = FALSE)
@@ -251,7 +267,7 @@ guardar_fig <- function(p, nombre, w = 9, h = 6) {
 }
 
 caption_modelo <- sprintf("Modelo: %s / %s | %s",
-                          best$tipo, best$nombre, P$source)
+                          modelo_sel$tipo, modelo_sel$nombre, P$source)
 
 # 6.1 PR curve
 p_pr <- df_pr |>
@@ -399,10 +415,10 @@ if (!is.null(f1_folds)) {
 }
 
 # 6.9 CV vs Kaggle (gap)
-if (!is.na(best$kaggle_f1)) {
+if (!is.na(modelo_sel$kaggle_f1)) {
   gap_long <- tibble(
     set = c("CV (interno)", "Kaggle (público)"),
-    f1  = c(best$cv_f1, best$kaggle_f1)
+    f1  = c(modelo_sel$cv_f1, modelo_sel$kaggle_f1)
   )
   p_gap <- gap_long |>
     ggplot(aes(set, f1, fill = set)) +
@@ -413,7 +429,7 @@ if (!is.na(best$kaggle_f1)) {
                                  "Kaggle (público)" = "#B71C1C")) +
     scale_y_continuous(limits = c(0, max(gap_long$f1) * 1.2)) +
     labs(title    = sprintf("CV F1 vs Kaggle F1 (gap = %.4f)",
-                            best$cv_f1 - best$kaggle_f1),
+                            modelo_sel$cv_f1 - modelo_sel$kaggle_f1),
          subtitle = "Gap positivo grande = posible overfitting al training",
          x = NULL, y = "F1",
          caption = caption_modelo) +
@@ -426,12 +442,12 @@ if (!is.na(best$kaggle_f1)) {
 # ------------------------------------------------------------
 
 cat("\n================ RESUMEN ================\n")
-cat(sprintf("  Tipo / Nombre:  %s / %s\n", best$tipo, best$nombre))
+cat(sprintf("  Tipo / Nombre:  %s / %s\n", modelo_sel$tipo, modelo_sel$nombre))
 cat(sprintf("  Threshold:      %.4f\n", threshold))
-cat(sprintf("  CV F1:          %.4f\n", best$cv_f1))
+cat(sprintf("  CV F1:          %.4f\n", modelo_sel$cv_f1))
 cat(sprintf("  Kaggle F1:      %s\n",
-            ifelse(is.na(best$kaggle_f1), "—",
-                   sprintf("%.4f", best$kaggle_f1))))
+            ifelse(is.na(modelo_sel$kaggle_f1), "—",
+                   sprintf("%.4f", modelo_sel$kaggle_f1))))
 cat(sprintf("  AUC-ROC:        %.4f\n", auc_roc))
 cat(sprintf("  AUC-PR:         %.4f\n", auc_pr))
 cat(sprintf("  Source probs:   %s\n",   P$source))
@@ -455,7 +471,7 @@ cat("      - deck1_05_calibration.png\n")
 if (!is.null(varimp))     cat("      - deck1_06_var_importance.png\n")
 cat("      - deck1_07_confusion_matrix.png\n")
 if (!is.null(f1_folds))   cat("      - deck1_08_f1_por_fold.png\n")
-if (!is.na(best$kaggle_f1)) cat("      - deck1_09_cv_vs_kaggle.png\n")
+if (!is.na(modelo_sel$kaggle_f1)) cat("      - deck1_09_cv_vs_kaggle.png\n")
 
 # ------------------------------------------------------------
 # 8. LIMPIAR
