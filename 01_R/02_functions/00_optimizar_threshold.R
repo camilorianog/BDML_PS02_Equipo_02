@@ -40,9 +40,3 @@ optimizar_threshold <- function(modelo, dados, target) {
   
   list(threshold = best_t, f1 = best_f1)
 }
-  
-  best_t  <- thresholds[which.max(f1_scores)]
-  best_f1 <- max(f1_scores, na.rm = TRUE)
-  
-  list(threshold = best_t, f1 = best_f1)
-}
