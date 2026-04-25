@@ -33,14 +33,14 @@ feature_engineer <- function(df) {
       # Fracción del hogar que no genera ingreso laboral.
       # A mayor ratio, mayor presión sobre los ocupados.
       # (IDB Costa Rica Kaggle 2018)
-      ratio_dependencia = (n_personas - n_ocupados) /
-        pmax(n_personas, 1),
+      ratio_dependencia = (nper - n_ocupados) /
+        pmax(nper, 1),
 
       # --- 2. Hacinamiento --------------------------------
       # Personas por cuarto total: proxy de calidad habitacional
       # y densidad del hogar. Umbral crítico ≥ 3 pers/cuarto.
       # (Banerjee 2018, Browne et al. 2018, Mentalbreaks 2019)
-      hacinamiento = n_personas / pmax(cuartos_hogar, 1),
+      hacinamiento = nper / pmax(p5000, 1),
 
       # --- 3. Interacción educación × ocupación -----------
       # Capital humano solo genera valor si hay empleo.
@@ -52,8 +52,8 @@ feature_engineer <- function(df) {
       # En zonas rurales el empleo tiene menor productividad
       # y mayor informalidad; la interacción captura esa brecha.
       # (Obando Rozo & Andrián 2015, World Bank 2019)
-      # NOTA: usa cabecera (renombrada de clase en 00_clean.R)
-      rural_x_ocup = as.integer(cabecera == "2") * tasa_ocupacion,
+      # NOTA: usa clase 
+      rural_x_ocup = as.integer(clase == "2") * tasa_ocupacion,
 
       # --- 5. Interacción formalidad × seguridad social ---
       # Formalidad plena = cotiza pensión Y tiene salud contributiva.
@@ -65,7 +65,7 @@ feature_engineer <- function(df) {
       # Rendimientos decrecientes: pasar de 3 a 4 personas
       # no impacta igual que pasar de 7 a 8.
       # (UN Statistics 2005, SOAS 2005)
-      n_personas_sq = n_personas^2,
+      nper_sq = nper^2,
 
       # --- 7. Polinomio edad promedio ---------------------
       # Relación en U invertida entre edad y pobreza:
@@ -106,14 +106,14 @@ feature_engineer <- function(df) {
       # implícito sin usar los montos directamente (leakage).
       # Un ocupado informal de pocas horas ≠ uno formal full-time.
       # (World Bank 2019, UNDP & ECLAC 2024)
-      calidad_empleo = horas_trabajo_prom * prop_formal,
+      calidad_empleo = horas_trabajo_prom * prop_cotiza_pension,
 
       # --- 14. Presión habitacional -----------------------
       # Cuartos efectivamente usados sobre cuartos disponibles.
       # Complementa hacinamiento: un hogar puede tener cuartos
       # pero no usarlos (subarriendo, abandono).
       # (UN-Habitat 2020)
-      presion_habitacional = cuartos_ocupados / pmax(cuartos_hogar, 1),
+      presion_habitacional = p5010 / pmax(p5000, 1),
 
       # --- 15. Jefe vulnerable ----------------------------
       # Jefe sin empleo y sin educación más allá de primaria:
@@ -126,7 +126,7 @@ feature_engineer <- function(df) {
       # hogar con cobertura laboral completa, señal fuerte
       # de ingreso estable por encima de la línea de pobreza.
       # (UNDP & ECLAC 2024)
-      doble_proteccion = prop_formal * prop_cotiza_pension,
+      doble_proteccion = prop_cotiza_pension * prop_cotiza_pension,
 
       # --- 17. Ratio adultos mayores sobre PET ------------
       # Carga específica de vejez dentro de la población activa.
@@ -138,20 +138,7 @@ feature_engineer <- function(df) {
       # Jefe mayor de 60 años sin empleo: alta probabilidad de
       # depender de transferencias o de otros miembros del hogar.
       # (Banerjee 2018, GEIH metodología 2023)
-      jefe_mayor_inactivo = as.integer(edad_jefe > 60 & ocup_jefe == 0),
-
-      # --- 19. Subempleo × informalidad -------------------
-      # Doble penalización: quieren trabajar más Y lo hacen
-      # en condiciones informales. Máxima vulnerabilidad laboral.
-      # (OIT "World Employment and Social Outlook" 2023)
-      subempleo_informal = tasa_subempleo * (1 - prop_formal),
-
-      # --- 20. Estabilidad formal -------------------------
-      # Antigüedad del jefe × dummy formal:
-      # si el jefe lleva tiempo en un empleo formal, la
-      # estabilidad del ingreso del hogar es mucho mayor.
-      # (World Bank 2019, Corral et al. 2024)
-      estabilidad_formal = antiguedad_jefe * jefe_formal
+      jefe_mayor_inactivo = as.integer(edad_jefe > 60 & ocup_jefe == 0)
     )
 }
 
@@ -170,13 +157,15 @@ gc()
 cat(">>> 00_features.R completado\n")
 cat("    train:", nrow(train), "filas x", ncol(train), "columnas\n")
 cat("    test: ", nrow(test),  "filas x", ncol(test),  "columnas\n")
-cat("\n    Features nuevas [v2]:\n")
-cat("    [13] calidad_empleo\n")
-cat("    [14] presion_habitacional\n")
-cat("    [15] jefe_vulnerable\n")
-cat("    [16] doble_proteccion\n")
-cat("    [17] ratio_mayores_65\n")
-cat("    [18] jefe_mayor_inactivo\n")
-cat("    [19] subempleo_informal\n")
-cat("    [20] estabilidad_formal\n")
-cat("    [Fix] nper → n_personas, p5000 → cuartos_hogar (nombres post-clean)\n")
+cat("\n    Features generadas:\n")
+cat("    [01] ratio_dependencia      [10] tasa_inactivos\n")
+cat("    [02] hacinamiento           [11] sin_ocupados\n")
+cat("    [03] educ_x_ocup            [12] educ_jefe_x_ocup\n")
+cat("    [04] rural_x_ocup           [13] calidad_empleo\n")
+cat("    [05] formal_x_salud         [14] presion_habitacional\n")
+cat("    [06] nper_sq                [15] jefe_vulnerable\n")
+cat("    [07] edad_prom_sq           [16] doble_proteccion\n")
+cat("    [08] mujeres_x_inact        [17] ratio_mayores_65\n")
+cat("    [09] jefe_mujer_inact       [18] jefe_mayor_inactivo\n")
+
+

@@ -15,6 +15,9 @@
 
 cat("\n>>> [EDA] Iniciando análisis descriptivo completo...\n")
 
+# --- Variables categóricas (alineadas con 00_clean.R) -----------------------
+vars_cat <- c("clase", "dominio", "depto", "p5090", "nivel_educ_max")
+
 # --- Cargar datos -----------------------------------------------------------
 train <- readRDS(here(paths$processed, "train_features.rds"))
 test  <- readRDS(here(paths$processed, "test_features.rds"))

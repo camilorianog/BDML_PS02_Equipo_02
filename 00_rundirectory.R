@@ -21,11 +21,11 @@
 
 cat("\n")
 cat("╔══════════════════════════════════════════════════════════╗\n")
-cat("║   MECA 4107 · Problem Set 02 · Equipo 02                ║\n")
-cat("║   Predicción de Pobreza — DANE MESE 2018, Bogotá        ║\n")
+cat("║   MECA 4107 · Problem Set 02 · Equipo 02                 ║\n")
+cat("║   Predicción de Pobreza — DANE MESE 2018, Bogotá         ║\n")
 cat("║                                                          ║\n")
-cat("║   Jose A. Rincón S.  ·  Juan C. Riaño                   ║\n")
-cat("║   Lucas Rodriguez    ·  Integrante 4                     ║\n")
+cat("║   Jose A. Rincón S.  ·  Juan C. Riaño                    ║\n")
+cat("║   Lucas Rodriguez    ·  Santiago Gonzalez.               ║\n")
 cat("╚══════════════════════════════════════════════════════════╝\n")
 cat(sprintf("  Inicio: %s\n\n", format(Sys.time(), "%Y-%m-%d %H:%M:%S")))
 
@@ -56,9 +56,8 @@ pacman::p_load(
 # PARÁMETROS GLOBALES
 # ============================================================
 
-SEED      <- 202601
-CV_FOLDS  <- 5
-CV_METRIC <- "F1"
+SEED     <- 202601
+CV_FOLDS <- 5
 
 set.seed(SEED)
 
@@ -79,7 +78,6 @@ paths <- list(
   prep        = here("01_R",    "00_prep"),
   feat        = here("01_R",    "01_feat"),
   functions   = here("01_R",    "02_functions"),
-  reduced     = here("01_R",    "03_reduced"),
   models      = here("02_models"),
   classes     = here("02_models", "00_classes"),
   submissions = here("02_models", "01_submissions"),
@@ -100,9 +98,9 @@ invisible(lapply(
 # FUNCIONES AUXILIARES
 # ============================================================
 
-source(here("01_R", "02_functions", "00_optimizar_threshold.R"))
-source(here("01_R", "02_functions", "01_guardar_modelo.R"))
-source(here("01_R", "02_functions", "02_generar_submission.R"))
+source(here(paths$functions, "00_optimizar_threshold.R"))
+source(here(paths$functions, "01_guardar_modelo.R"))
+source(here(paths$functions, "02_generar_submission.R"))
 
 # ============================================================
 # PIPELINE
@@ -115,7 +113,7 @@ cat("─────────────────────────
 cat("  [1/5] Limpieza y preparación de datos\n")
 cat("─────────────────────────────────────────────────────────\n")
 tic("Limpieza")
-source(here("01_R", "00_prep", "00_clean.R"))
+source(here(paths$prep, "00_clean.R"))
 toc(log = TRUE)
 
 # --- [2] Feature engineering --------------------------------
@@ -123,7 +121,7 @@ cat("\n────────────────────────�
 cat("  [2/5] Feature engineering\n")
 cat("─────────────────────────────────────────────────────────\n")
 tic("Features")
-source(here("01_R", "01_feat", "00_features.R"))
+source(here(paths$feat, "00_features.R"))
 toc(log = TRUE)
 
 # --- [3] EDA ------------------------------------------------
@@ -131,7 +129,7 @@ cat("\n────────────────────────�
 cat("  [3/5] Análisis exploratorio (EDA)\n")
 cat("─────────────────────────────────────────────────────────\n")
 tic("EDA")
-source(here("01_R", "00_prep", "01_eda.R"))
+source(here(paths$prep, "01_eda.R"))
 toc(log = TRUE)
 
 # --- [4] Modelos de probabilidad ----------------------------
@@ -139,32 +137,28 @@ cat("\n────────────────────────�
 cat("  [4/5] Modelos de probabilidad\n")
 cat("─────────────────────────────────────────────────────────\n")
 tic("Modelos probabilidad")
-source(here("02_models", "00_classes", "01_Base_models.R"))
-source(here("02_models", "00_classes", "02_LPM.R"))
-source(here("02_models", "00_classes", "03_Logit.R"))
-source(here("02_models", "00_classes", "04_Elastic_Net.R"))
+source(here(paths$classes, "01_Base_models.R"))
+source(here(paths$classes, "02_LPM.R"))
+source(here(paths$classes, "03_Logit.R"))
+source(here(paths$classes, "04_Elastic_Net.R"))
 toc(log = TRUE)
-
-# Base reducida para modelos de árbol
-cat("  · Reducción de variables\n")
-source(here("01_R", "03_reduced", "00_reduction.R"))
 
 # --- [5] Modelos basados en árboles -------------------------
 cat("\n─────────────────────────────────────────────────────────\n")
 cat("  [5/5] Modelos basados en árboles\n")
 cat("─────────────────────────────────────────────────────────\n")
 tic("Modelos árboles")
-source(here("02_models", "00_classes", "05_CART.R"))
-source(here("02_models", "00_classes", "06_Random_Forest.R"))
-source(here("02_models", "00_classes", "07_Boosting.R"))
-source(here("02_models", "00_classes", "08_Naive_Bayes.R"))
+source(here(paths$classes, "05_CART.R"))
+source(here(paths$classes, "06_Random_Forest.R"))
+source(here(paths$classes, "07_Boosting.R"))
+source(here(paths$classes, "08_Naive_Bayes.R"))
 toc(log = TRUE)
 
 # ============================================================
 # RESUMEN FINAL
 # ============================================================
 
-cat("\n╔══════════════════════════════════════════════════════════╗\n")
+cat("╔══════════════════════════════════════════════════════════╗\n")
 cat("║   Pipeline completado                                    ║\n")
 cat("╚══════════════════════════════════════════════════════════╝\n")
 cat("  Tiempos por etapa:\n")

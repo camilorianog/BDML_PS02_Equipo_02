@@ -178,7 +178,7 @@ cat("\nDims después del join:\n")
 cat("  train:", dim(train), "\n")
 cat("  test: ", dim(test),  "\n")
 
-hogares_sin_personas <- sum(is.na(train$n_per))
+hogares_sin_personas <- sum(is.na(train$nper))
 if (hogares_sin_personas > 0) {
   cat("  AVISO:", hogares_sin_personas,
       "hogares sin match en personas\n")
