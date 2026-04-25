@@ -13,7 +13,7 @@
 | Jose A. Rincon S | 202013328 |
 | Juan C. Riaño    | 202013305 |
 | Lucas Rodriguez  | 202021985 |
-| Santiago Gonzalez| 202156304 |
+| Santiago Gonzalez| 202110234 |
 
 ---
 
